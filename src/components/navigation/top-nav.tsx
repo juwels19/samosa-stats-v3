@@ -1,3 +1,4 @@
+import ThemeSwitcher from "@/components/common/theme-switcher";
 import AuthButtons from "@/components/navigation/auth-buttons";
 import HomeIconLink from "@/components/navigation/home-icon-link";
 import NavLinks from "@/components/navigation/nav-links";
@@ -12,6 +13,7 @@ export default function TopNav() {
           <NavLinks />
         </div>
         <div className="flex gap-2 items-center">
+          <ThemeSwitcher />
           <AuthButtons />
           <NavSideSheet />
         </div>

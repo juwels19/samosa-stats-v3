@@ -26,13 +26,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased dark`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased h-dvh`}
       >
         <Providers>
           <TopNav />
-          <main className="max-w-screen-2xl mx-auto p-4">{children}</main>
+          <main className="max-w-screen-2xl mx-auto p-4">
+            <div className=" font-geistSans">{children}</div>
+          </main>
         </Providers>
       </body>
     </html>
