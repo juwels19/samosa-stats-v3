@@ -1,5 +1,7 @@
-import TestSignIn from "@/components/test-sign-in";
+import { Button } from "@/components/ui/button";
+import { ROUTES } from "@/lib/routes";
 import Image from "next/image";
+import Link from "next/link";
 
 const hero = "/hero.png";
 
@@ -18,9 +20,9 @@ export default function Home() {
           <p className="max-w-[600px] text-zinc-500 md:text-xl dark:text-zinc-400">
             Note: Students are not allowed and will be rejected.
           </p>
-          <div className="flex flex-col gap-2 min-[400px]:flex-row">
-            <TestSignIn />
-          </div>
+          <Link href={ROUTES.DASHBOARD}>
+            <Button>Get Started</Button>
+          </Link>
         </div>
         <Image
           src={hero}

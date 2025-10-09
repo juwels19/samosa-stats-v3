@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Providers from "@/providers";
+import TopNav from "@/components/navigation/top-nav";
 
 import "./globals.css";
 
@@ -27,10 +28,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased dark`}
       >
         <Providers>
-          <main>{children}</main>
+          <TopNav />
+          <main className="max-w-screen-2xl mx-auto p-4">{children}</main>
         </Providers>
       </body>
     </html>
