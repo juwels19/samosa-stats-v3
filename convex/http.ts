@@ -42,6 +42,7 @@ async function validateRequest(req: Request): Promise<WebhookEvent | null> {
     "svix-timestamp": req.headers.get("svix-timestamp")!,
     "svix-signature": req.headers.get("svix-signature")!,
   };
+  // Needs to use process.env since this is executed on convex
   const wh = new Webhook(process.env.CLERK_WEBHOOK_SECRET!);
   try {
     return wh.verify(payloadString, svixHeaders) as unknown as WebhookEvent;

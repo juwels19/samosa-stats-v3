@@ -1,6 +1,9 @@
 "use client";
 
-import { adminMenuItems } from "@/components/navigation/constants";
+import {
+  adminMenuItems,
+  generalMenuItems,
+} from "@/components/navigation/constants";
 import HomeIconLink from "@/components/navigation/home-icon-link";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +14,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { ROUTES } from "@/lib/routes";
 import { useConvexAuth, useQuery } from "convex/react";
 import { MenuIcon } from "lucide-react";
 import Link from "next/link";
@@ -39,7 +41,14 @@ export default function NavSideSheet() {
           </SheetDescription>
         </SheetHeader>
         <div className="flex flex-col gap-4 px-4">
-          <Link href={ROUTES.DASHBOARD}>Dashboard</Link>
+          {generalMenuItems.map((item) => (
+            <Link
+              key={`mobile-general-menu-item-${item.label}`}
+              href={item.href}
+            >
+              {item.label}
+            </Link>
+          ))}
           {isAuthenticated &&
             isAdmin &&
             adminMenuItems.map((item) => (
