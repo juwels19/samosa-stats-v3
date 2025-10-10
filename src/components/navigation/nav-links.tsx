@@ -30,7 +30,7 @@ export default function NavLinks() {
           <NavigationMenuLink
             key={`general-menu-item-${item.label}`}
             className={navigationMenuTriggerStyle()}
-            active={pathname ? pathname === item.href : false}
+            active={pathname === item.href}
             asChild
           >
             <Link href={item.href}>{item.label}</Link>
@@ -42,7 +42,7 @@ export default function NavLinks() {
             <NavigationMenuLink
               key={`admin-menu-item-${item.label}`}
               className={navigationMenuTriggerStyle()}
-              active={pathname ? pathname === item.href : false}
+              active={pathname === item.href}
               asChild
             >
               <Link href={item.href}>{item.label}</Link>

@@ -35,8 +35,8 @@ export default function RootLayout({
       >
         <Providers>
           <TopNav />
-          <main className="max-w-screen-2xl mx-auto p-4">
-            <div className=" font-geistSans">{children}</div>
+          <main className="font-geistSans max-w-screen-2xl mx-auto h-[calc(100dvh_-_var(--nav-height))]">
+            {children}
           </main>
         </Providers>
       </body>
