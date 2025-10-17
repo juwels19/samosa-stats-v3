@@ -4,5 +4,5 @@ export const metadata = {
 };
 
 export default function SettingsPage() {
-  return <div>this is the settings page</div>;
+  return <div>this is the base settings page</div>;
 }

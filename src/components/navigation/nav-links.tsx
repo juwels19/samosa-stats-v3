@@ -42,7 +42,9 @@ export default function NavLinks() {
             <NavigationMenuLink
               key={`admin-menu-item-${item.label}`}
               className={navigationMenuTriggerStyle()}
-              active={pathname === item.href}
+              active={new RegExp(`^${item.href}(?:\\/[^/]+)*\\/?$`).test(
+                pathname
+              )}
               asChild
             >
               <Link href={item.href}>{item.label}</Link>

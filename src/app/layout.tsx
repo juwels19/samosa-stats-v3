@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | Samosa Stats",
-    default: "Samosa Stats",
+    template: "%s | v3 Samosa Stats",
+    default: "v3 Samosa Stats",
   },
   description: "Degenerate FRC fantasy",
 };
