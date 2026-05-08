@@ -6,9 +6,7 @@ import "./src/env/server"
 
 const nextConfig: NextConfig = {
   /* config options here */
-  experimental: {
-    reactCompiler: true,
-  },
+  reactCompiler: true,
 };
 
 export default nextConfig;

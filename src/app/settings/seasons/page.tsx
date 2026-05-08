@@ -1,8 +1,10 @@
+import { redirect, RedirectType } from "next/navigation";
+
 export const metadata = {
   title: "Settings",
   description: "Samosa stats settings",
 };
 
 export default function SeasonSettingsPage() {
-  return <div>this is the season settings page</div>;
+  return redirect("/settings/seasons/active-season", RedirectType.push);
 }

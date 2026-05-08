@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Instrument_Sans } from "next/font/google";
 import Providers from "@/providers";
 import TopNav from "@/components/navigation/top-nav";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
 import "./globals.css";
+import { cn } from "@/lib/utils";
+
+const instrumentSansHeading = Instrument_Sans({subsets:['latin'],variable:'--font-heading'});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={cn(instrumentSansHeading.variable)}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased h-dvh`}
       >
@@ -38,6 +42,7 @@ export default function RootLayout({
           <main className="font-geistSans max-w-screen-2xl mx-auto h-[calc(100dvh_-_var(--nav-height))]">
             {children}
           </main>
+          <ReactQueryDevtools />
         </Providers>
       </body>
     </html>

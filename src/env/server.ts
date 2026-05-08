@@ -4,7 +4,9 @@ import * as z from 'zod/v4';
 export const serverEnv = createEnv({
   server: {
     CONVEX_DEPLOYMENT: z.string(),
-    CLERK_SECRET_KEY: z.string()
+    CLERK_SECRET_KEY: z.string(),
+    FRC_EVENTS_USERNAME: z.string(),
+    FRC_EVENTS_API_TOKEN: z.string(),
   },
   experimental__runtimeEnv: process.env
 })
