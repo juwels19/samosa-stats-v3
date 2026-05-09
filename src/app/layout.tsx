@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Instrument_Sans } from "next/font/google";
 import Providers from "@/providers";
 import TopNav from "@/components/navigation/top-nav";
+import { Toaster } from "@/components/ui/sonner";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
 import "./globals.css";
@@ -42,6 +43,7 @@ export default function RootLayout({
           <main className="font-geistSans max-w-screen-2xl mx-auto h-[calc(100dvh_-_var(--nav-height))]">
             {children}
           </main>
+          <Toaster richColors position="top-right" />
           <ReactQueryDevtools />
         </Providers>
       </body>

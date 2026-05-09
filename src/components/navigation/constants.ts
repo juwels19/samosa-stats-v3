@@ -6,6 +6,7 @@ export const generalMenuItems = [
 ] as const;
 
 export const adminMenuItems: { label: string, href: string }[] = [
+  { label: "Approvals", href: ROUTES.APPROVALS },
   { label: "Scores", href: ROUTES.SCORES },
   { label: "Settings", href: ROUTES.SETTINGS },
 ] as const;

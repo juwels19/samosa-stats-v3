@@ -4,6 +4,7 @@ export const ROUTES = {
   SIGN_IN: "/sign-in",
   WAITLIST: "/waitlist",
   LEADERBOARD: "/leaderboard",
+  APPROVALS: "/approvals",
   SETTINGS: "/settings",
   PICKS: "/picks",
   SCORES: "/scores",

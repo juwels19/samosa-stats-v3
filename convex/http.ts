@@ -28,7 +28,6 @@ http.route({
         break;
       }
       case "waitlistEntry.created":
-      case "waitlistEntry.updated":
         const email = event.data.email_address;
         await fetch(process.env.DISCORD_WEBHOOK_URL!, {
           method: "POST",
