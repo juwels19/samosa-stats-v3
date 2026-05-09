@@ -20,9 +20,14 @@ export default function Home() {
           <p className="max-w-[600px] text-zinc-500 md:text-xl dark:text-zinc-400">
             Note: Students are not allowed and will be rejected.
           </p>
-          <Link href={ROUTES.DASHBOARD}>
-            <Button>Get Started</Button>
-          </Link>
+          <div className="flex flex-wrap justify-center gap-2 lg:justify-start">
+            <Button asChild>
+              <Link href={ROUTES.SIGN_IN}>Sign in</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href={ROUTES.WAITLIST}>Request access</Link>
+            </Button>
+          </div>
         </div>
         <Image
           src={hero}

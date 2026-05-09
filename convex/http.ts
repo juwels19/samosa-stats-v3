@@ -12,7 +12,7 @@ http.route({
   handler: httpAction(async (ctx, request) => {
     const event = await validateRequest(request);
     if (!event) {
-      return new Response("Error occured", { status: 400 });
+      return new Response("Error occurred", { status: 400 });
     }
     switch (event.type) {
       case "user.created": // intentional fallthrough
@@ -28,15 +28,25 @@ http.route({
         break;
       }
       case "waitlistEntry.created":
+      case "waitlistEntry.updated": {
         const email = event.data.email_address;
-        await fetch(process.env.DISCORD_WEBHOOK_URL!, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            content: `<@&1226675927124152372> New Waitlist Signup: ${email}`,
-          }),
+        await ctx.runMutation(internal.users.upsertFromWaitlist, {
+          waitlistEntryId: event.data.id,
+          email,
+          status: normalizeWaitlistStatus(event.data.status),
         });
+
+        if (event.type === "waitlistEntry.created") {
+          await fetch(process.env.DISCORD_WEBHOOK_URL!, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              content: `<@&1226675927124152372> New Waitlist Signup: ${email}`,
+            }),
+          });
+        }
         break;
+      }
       default:
         console.log("Ignored Clerk webhook event", event.type);
     }
@@ -59,6 +69,17 @@ async function validateRequest(req: Request): Promise<WebhookEvent | null> {
   } catch (error) {
     console.error("Error verifying webhook event", error);
     return null;
+  }
+}
+
+function normalizeWaitlistStatus(status: string | undefined) {
+  switch (status) {
+    case "invited":
+    case "completed":
+    case "rejected":
+      return status;
+    default:
+      return "pending";
   }
 }
 

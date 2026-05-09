@@ -1,0 +1,13 @@
+---
+description: Keep React component files focused on component definitions
+alwaysApply: true
+---
+
+# Component File Organization
+
+- Component files should only define and export React components.
+- Keep custom hooks in their own nearby `use-*.ts` or `use-*.tsx` files.
+- Keep constants in nearby `constants.ts` files.
+- Keep utility functions in nearby utility files named for the helper, such as `get-status-message.ts`.
+- Prefer colocating these files as close as possible to the components that use them.
+- Do not add non-component helpers at the bottom of a component file; extract them before finishing the change.

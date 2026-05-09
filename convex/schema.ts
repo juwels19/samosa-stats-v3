@@ -3,14 +3,30 @@ import { v } from "convex/values";
 
 export default defineSchema({
   users: defineTable({
-    externalId: v.string(),
+    externalId: v.optional(v.string()),
     firstName: v.string(),
     lastName: v.string(),
     email: v.string(),
+    normalizedEmail: v.optional(v.string()),
     isAdmin: v.boolean(),
     isApprover: v.boolean(),
     isApproved: v.boolean(),
-  }).index("byExternalId", ["externalId"]),
+    waitlistEntryId: v.optional(v.string()),
+    waitlistStatus: v.optional(
+      v.union(
+        v.literal("pending"),
+        v.literal("invited"),
+        v.literal("completed"),
+        v.literal("rejected"),
+      ),
+    ),
+    invitedAt: v.optional(v.number()),
+    approvedAt: v.optional(v.number()),
+    rejectedAt: v.optional(v.number()),
+  })
+    .index("byExternalId", ["externalId"])
+    .index("byNormalizedEmail", ["normalizedEmail"])
+    .index("byWaitlistEntryId", ["waitlistEntryId"]),
   seasons: defineTable({
     year: v.number(),
     gameName: v.string(),

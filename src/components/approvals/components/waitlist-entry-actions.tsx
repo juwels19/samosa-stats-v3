@@ -45,12 +45,14 @@ export default function WaitlistEntryActions({
     <div className="flex justify-end gap-2">
       <form action={inviteFormAction}>
         <input type="hidden" name="entryId" value={entry.id} />
+        <input type="hidden" name="email" value={entry.emailAddress} />
         <WaitlistActionButton disabled={inviteDisabled} pending={invitePending}>
           Invite
         </WaitlistActionButton>
       </form>
       <form action={revokeFormAction}>
         <input type="hidden" name="entryId" value={entry.id} />
+        <input type="hidden" name="email" value={entry.emailAddress} />
         <WaitlistActionButton
           variant="destructive"
           disabled={revokeDisabled}
