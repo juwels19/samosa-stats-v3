@@ -7,7 +7,7 @@ import { Webhook } from "svix";
 const http = httpRouter();
 
 http.route({
-  path: "/clerk-users-webhook",
+  path: "/clerk-webhook",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     const event = await validateRequest(request);
@@ -27,6 +27,17 @@ http.route({
         await ctx.runMutation(internal.users.deleteFromClerk, { clerkUserId });
         break;
       }
+      case "waitlistEntry.created":
+      case "waitlistEntry.updated":
+        const email = event.data.email_address;
+        await fetch(process.env.DISCORD_WEBHOOK_URL!, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: `<@&1226675927124152372> New Waitlist Signup: ${email}`,
+          }),
+        });
+        break;
       default:
         console.log("Ignored Clerk webhook event", event.type);
     }
