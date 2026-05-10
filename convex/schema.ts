@@ -31,7 +31,9 @@ export default defineSchema({
     year: v.number(),
     gameName: v.string(),
     isActive: v.boolean()
-  }),
+  })
+    .index("byYear", ["year"])
+    .index("byIsActive", ["isActive"]),
   events: defineTable({
     name: v.string(),
     displayName: v.string(),

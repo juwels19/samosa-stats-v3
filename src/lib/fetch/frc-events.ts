@@ -43,8 +43,32 @@ const fetchFrcEvents = async (
 export async function getGameNameForYear(
   year: string
 ): Promise<string> {
-  const result = await fetchFrcEvents(`/${year}`, "GET");
+  const normalizedYear = year.trim();
+  if (!/^\d{4}$/.test(normalizedYear)) {
+    throw new Error("Enter a four-digit season year.");
+  }
 
-  const data = await result.json() as FrcEvents_Season;
+  const result = await fetchFrcEvents(`/${normalizedYear}`, "GET");
+  const responseBody = await result.text();
+
+  if (!result.ok) {
+    throw new Error(`Unable to fetch FRC season ${normalizedYear}.`);
+  }
+
+  if (responseBody.length === 0) {
+    throw new Error(`No FRC season data found for ${normalizedYear}.`);
+  }
+
+  let data: FrcEvents_Season;
+  try {
+    data = JSON.parse(responseBody) as FrcEvents_Season;
+  } catch {
+    throw new Error(`Invalid FRC season data returned for ${normalizedYear}.`);
+  }
+
+  if (typeof data.gameName !== "string" || data.gameName.length === 0) {
+    throw new Error(`No FRC game name found for ${normalizedYear}.`);
+  }
+
   return data.gameName;
 }
