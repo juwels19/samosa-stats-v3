@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DotMatrixLoader } from "@/components/ui/dot-matrix-loader";
+import { DotmCircular3 } from "@/components/ui/dotm-circular-3";
 import CustomWaitlistForm from "@/components/waitlist/custom-waitlist-form";
 import WaitlistAccessCheck from "@/components/waitlist/waitlist-access-check";
 import { getCurrentUserFromSession } from "@/lib/admin";
@@ -70,8 +70,10 @@ function PendingWaitlistState() {
   return (
     <Card className="w-full max-w-xl">
       <CardHeader className="items-center justify-items-center text-center">
-        <DotMatrixLoader
-          label="Application under review"
+        <DotmCircular3
+          ariaLabel="Application under review"
+          size={56}
+          dotSize={6}
           className="mb-2 justify-self-center"
         />
         <CardTitle className="text-2xl">You&apos;re under review</CardTitle>

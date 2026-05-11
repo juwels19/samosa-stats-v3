@@ -53,10 +53,12 @@ export default defineSchema({
     number: v.int64()
   }),
   categories: defineTable({
-    label: v.string(),
+    text: v.string(),
     season: v.id("seasons"),
     isGlobal: v.boolean()
-  }),
+  })
+    .index("bySeason", ["season"])
+    .index("bySeasonAndIsGlobal", ["season", "isGlobal"]),
   picks: defineTable({
     event: v.id('events'),
     user: v.id('users'),

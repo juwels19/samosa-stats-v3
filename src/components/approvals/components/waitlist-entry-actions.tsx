@@ -2,7 +2,7 @@
 
 import type { WaitlistEntryAction } from "@/components/approvals/types";
 import { Button } from "@/components/ui/button";
-import { DotMatrixLoader } from "@/components/ui/dot-matrix-loader";
+import { DotmCircular3 } from "@/components/ui/dotm-circular-3";
 import type { SerializedWaitlistEntry } from "@/lib/clerk/types";
 import { useActionState } from "react";
 import { toast } from "sonner";
@@ -87,9 +87,11 @@ function WaitlistActionButton({
     >
       <span className={pending ? "invisible" : undefined}>{children}</span>
       {pending && (
-        <DotMatrixLoader
-          label={`${children} pending`}
-          className="absolute left-1/2 top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 text-current"
+        <DotmCircular3
+          ariaLabel={`${children} pending`}
+          size={16}
+          dotSize={2}
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-current"
         />
       )}
     </Button>

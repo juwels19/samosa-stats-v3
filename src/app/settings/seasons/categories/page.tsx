@@ -1,3 +1,9 @@
+import CategoriesList from "@/components/settings/seasons/categories/categories-list";
+
 export default function CategorySettingsPage() {
-  return <div>This is the category settings page</div>;
+  return (
+    <div>
+      <CategoriesList />
+    </div>
+  );
 }
