@@ -16,9 +16,7 @@ export default async function SettingsLayout({
       style={{ "--sidebar-width": "11rem" } as CSSProperties}
     >
       <SettingsSidebar />
-      <div className="min-w-0 flex-1 overflow-y-auto py-6 pl-8">
-        {children}
-      </div>
+      <div className="min-w-0 flex-1 overflow-y-auto p-6">{children}</div>
     </SidebarProvider>
   );
 }

@@ -26,7 +26,7 @@ export default function CategoryCard({
       role="listitem"
       variant="outline"
       size="sm"
-      className="rounded-3xl bg-card shadow-sm hover:bg-muted/30"
+      className="rounded-3xl bg-card"
     >
       <ItemContent className="min-w-0">
         <ItemTitle>{category.text}</ItemTitle>
@@ -34,7 +34,7 @@ export default function CategoryCard({
       <ItemActions>
         <Dialog>
           <DialogTrigger asChild>
-            <Button type="button" variant="outline" size="xs">
+            <Button type="button" size="xs" variant="outline">
               <ListTodoIcon />
               Scoring
             </Button>

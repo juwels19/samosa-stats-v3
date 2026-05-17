@@ -32,9 +32,14 @@ export default function CategoryGroup({
         <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-muted text-foreground">
           <Icon className="size-5" />
         </div>
-        <div>
-          <h2 className="font-heading font-medium">{title}</h2>
-          <p className="text-sm text-muted-foreground">{description}</p>
+        <div className="grow flex flex-row items-center justify-between">
+          <div>
+            <h2 className="font-heading font-medium">{title}</h2>
+            <p className="text-sm text-muted-foreground">{description}</p>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {categories.length} categories
+          </p>
         </div>
       </div>
       {categories.length === 0 ? (
@@ -48,7 +53,7 @@ export default function CategoryGroup({
           </EmptyHeader>
         </Empty>
       ) : (
-        <ItemGroup className="max-h-96 overflow-y-auto pr-1">
+        <ItemGroup className="max-h-96 overflow-y-auto">
           {categories.map((category) => (
             <CategoryCard key={category._id} category={category} />
           ))}
