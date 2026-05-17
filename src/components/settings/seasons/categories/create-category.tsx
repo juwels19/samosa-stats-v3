@@ -98,11 +98,6 @@ export default function CreateCategory({
           <PlusIcon data-icon="inline-end" />
         </Button>
       </DialogTrigger>
-      {!hasActiveSeason && (
-        <p className="mt-2 text-right text-sm text-muted-foreground">
-          Set an active season before creating categories.
-        </p>
-      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add category</DialogTitle>

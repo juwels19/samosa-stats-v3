@@ -16,6 +16,7 @@ import { api } from "../../../../../convex/_generated/api";
 import CreateCategory from "./create-category";
 import CategoriesEmptyState from "./categories-empty";
 import CategoryGroup from "@/components/settings/seasons/categories/category-group";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CategoriesList() {
   const currentUser = useCurrentUser();
@@ -42,8 +43,9 @@ export default function CategoriesList() {
       </CardHeader>
       <CardContent>
         {currentUser.isLoading || categoryData === undefined ? (
-          <div className="text-sm text-muted-foreground">
-            Loading categories...
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Skeleton className="h-40 w-full rounded-3xl" />
+            <Skeleton className="h-40 w-full rounded-3xl" />
           </div>
         ) : !currentUser.user?.isAdmin ? (
           <div className="text-sm text-muted-foreground">

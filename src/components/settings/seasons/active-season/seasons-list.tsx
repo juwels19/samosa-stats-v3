@@ -24,13 +24,6 @@ import {
 } from "@/components/ui/card";
 import CreateSeason from "@/components/settings/seasons/active-season/create-season";
 import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
-import {
   Table,
   TableBody,
   TableCell,
@@ -38,12 +31,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
+import { Skeleton } from "@/components/ui/skeleton";
+import SeasonsEmptyState from "./seasons-empty";
 
 export default function SeasonsList() {
   const currentUser = useCurrentUser();
@@ -85,7 +79,7 @@ export default function SeasonsList() {
       </CardHeader>
       <CardContent>
         {currentUser.isLoading || seasons === undefined ? (
-          <div className="text-sm text-muted-foreground">Loading seasons...</div>
+          <Skeleton className="h-40 w-full rounded-3xl" />
         ) : !currentUser.user?.isAdmin ? (
           <div className="text-sm text-muted-foreground">
             Admin access is required to manage seasons.
@@ -121,7 +115,12 @@ export default function SeasonsList() {
                     </TableCell>
                     <TableCell className="text-right">
                       {season.isActive ? (
-                        <Button type="button" variant="secondary" size="sm" disabled>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          disabled
+                        >
                           Active
                         </Button>
                       ) : (
@@ -169,21 +168,5 @@ export default function SeasonsList() {
         )}
       </CardContent>
     </Card>
-  );
-}
-
-function SeasonsEmptyState() {
-  return (
-    <Empty className="border">
-      <EmptyHeader>
-        <EmptyMedia variant="icon">
-          <CalendarIcon />
-        </EmptyMedia>
-        <EmptyTitle>No seasons loaded</EmptyTitle>
-        <EmptyDescription>
-          Add a season to fetch its game name and make it available here.
-        </EmptyDescription>
-      </EmptyHeader>
-    </Empty>
   );
 }
