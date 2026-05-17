@@ -1,6 +1,20 @@
-import { Item, ItemMedia, ItemContent, ItemTitle } from "@/components/ui/item";
-import { TagsIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemTitle,
+} from "@/components/ui/item";
 import { Doc } from "../../../../../convex/_generated/dataModel";
+import { ListTodoIcon } from "lucide-react";
 
 export default function CategoryCard({
   category,
@@ -17,6 +31,25 @@ export default function CategoryCard({
       <ItemContent className="min-w-0">
         <ItemTitle>{category.text}</ItemTitle>
       </ItemContent>
+      <ItemActions>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button type="button" variant="outline" size="xs">
+              <ListTodoIcon />
+              Scoring
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Scoring Description</DialogTitle>
+              <DialogDescription>{category.text}</DialogDescription>
+            </DialogHeader>
+            <p className="whitespace-pre-wrap text-sm leading-6">
+              {category.scoringDescription}
+            </p>
+          </DialogContent>
+        </Dialog>
+      </ItemActions>
     </Item>
   );
 }

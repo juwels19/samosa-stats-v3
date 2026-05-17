@@ -43,6 +43,7 @@ export default defineSchema({
     endDate: v.string(),
     numberOfTeamPicks: v.int64(),
     numberOfCategoryPicks: v.int64(),
+    categories: v.array(v.id('categories')),
     isComplete: v.boolean(),
     isOngoing: v.boolean(),
     isSubmissionClosed: v.boolean(),
@@ -54,6 +55,7 @@ export default defineSchema({
   }),
   categories: defineTable({
     text: v.string(),
+    scoringDescription: v.string(),
     season: v.id("seasons"),
     isGlobal: v.boolean()
   })

@@ -15,6 +15,7 @@ const categoryValidator = v.object({
   _id: v.id("categories"),
   _creationTime: v.number(),
   text: v.string(),
+  scoringDescription: v.string(),
   season: v.id("seasons"),
   isGlobal: v.boolean(),
 });
@@ -55,6 +56,7 @@ export const list = query({
 export const create = mutation({
   args: {
     text: v.string(),
+    scoringDescription: v.string(),
     isGlobal: v.boolean(),
   },
   returns: v.id("categories"),
@@ -66,9 +68,14 @@ export const create = mutation({
     }
 
     const text = args.text.trim();
+    const scoringDescription = args.scoringDescription?.trim();
 
     if (text.length === 0) {
       throw new Error("Category text is required.");
+    }
+
+    if (scoringDescription.length === 0) {
+      throw new Error("Scoring description is required.");
     }
 
     const activeSeason = await getActiveSeason(ctx);
@@ -81,6 +88,7 @@ export const create = mutation({
 
     return await ctx.db.insert("categories", {
       text,
+      scoringDescription,
       isGlobal: args.isGlobal,
       season: activeSeason._id,
     });

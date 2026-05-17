@@ -11,7 +11,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   Item,
@@ -19,6 +24,7 @@ import {
   ItemDescription,
   ItemTitle,
 } from "@/components/ui/item";
+import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "convex/react";
 import { Globe2Icon, PlusIcon } from "lucide-react";
@@ -43,6 +49,7 @@ export default function CreateCategory({
     resolver: zodResolver(createCategoryFormSchema),
     defaultValues: {
       text: "",
+      scoringDescription: "",
       isGlobal: false,
     },
   });
@@ -51,16 +58,23 @@ export default function CreateCategory({
     setOpen(nextOpen);
 
     if (!nextOpen) {
-      createCategoryForm.reset({ text: "", isGlobal: false });
+      createCategoryForm.reset({
+        text: "",
+        scoringDescription: "",
+        isGlobal: false,
+      });
     }
   };
 
   const handleSubmit = async (
     data: z.infer<typeof createCategoryFormSchema>,
   ) => {
+    const scoringDescription = data.scoringDescription.trim();
+
     try {
       await createCategory({
         text: data.text,
+        scoringDescription,
         isGlobal: data.isGlobal,
       });
       toast.success("Category saved", {
@@ -113,6 +127,30 @@ export default function CreateCategory({
                   autoComplete="off"
                   aria-invalid={fieldState.invalid}
                 />
+                {fieldState.invalid && (
+                  <FieldError errors={[fieldState.error]} />
+                )}
+              </Field>
+            )}
+          />
+          <Controller
+            name="scoringDescription"
+            control={createCategoryForm.control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <FieldLabel htmlFor="create-category-scoring-description">
+                  Scoring description
+                </FieldLabel>
+                <Textarea
+                  {...field}
+                  id="create-category-scoring-description"
+                  placeholder="Explain how this category should be scored."
+                  aria-invalid={fieldState.invalid}
+                  rows={4}
+                />
+                <FieldDescription>
+                  Notes for scoring this category.
+                </FieldDescription>
                 {fieldState.invalid && (
                   <FieldError errors={[fieldState.error]} />
                 )}
