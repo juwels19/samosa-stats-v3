@@ -1,3 +1,5 @@
+import EventsList from "@/components/settings/seasons/events/events-list";
+
 export default function EventsSettingsPage() {
-  return <div>This is the events settings page</div>;
+  return <EventsList />;
 }

@@ -37,18 +37,23 @@ export default defineSchema({
   events: defineTable({
     name: v.string(),
     displayName: v.string(),
-    season: v.id('seasons'),
+    season: v.id("seasons"),
     eventCode: v.string(),
     startDate: v.string(),
     endDate: v.string(),
     numberOfTeamPicks: v.int64(),
     numberOfCategoryPicks: v.int64(),
-    categories: v.array(v.id('categories')),
-    isComplete: v.boolean(),
-    isOngoing: v.boolean(),
-    isSubmissionClosed: v.boolean(),
-    isCountdownActive: v.boolean(),
-  }),
+    categories: v.array(v.id("categories")),
+    status: v.union(
+      v.literal("UPCOMING"),
+      v.literal("SUBMISSIONS_OPEN"),
+      v.literal("SUBMISSIONS_CLOSED"),
+      v.literal("ONGOING"),
+      v.literal("COMPLETE"),
+    ),
+  })
+    .index("bySeason", ["season"])
+    .index("bySeasonAndEventCode", ["season", "eventCode"]),
   teams: defineTable({
     name: v.string(),
     number: v.int64()

@@ -6,6 +6,7 @@ alwaysApply: true
 # Component File Organization
 
 - Component files should only define and export React components.
+- Define only one React component per file. Extract additional components into their own nearby component files before finishing the change.
 - Keep custom hooks in their own nearby `use-*.ts` or `use-*.tsx` files.
 - Keep constants in nearby `constants.ts` files.
 - Keep utility functions in nearby utility files named for the helper, such as `get-status-message.ts`.
