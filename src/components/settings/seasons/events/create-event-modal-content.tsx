@@ -6,7 +6,7 @@ import type { Doc } from "../../../../../convex/_generated/dataModel";
 
 import CategorySelectionStep from "./category-selection-step";
 import ConfirmationStep from "./confirmation-step";
-import type { CreateEventModalData } from "./constants";
+import type { CreateEventModalData } from "@/components/events/constants";
 import CreateEventFooter from "./create-event-footer";
 import LoadEventStep from "./load-event-step";
 

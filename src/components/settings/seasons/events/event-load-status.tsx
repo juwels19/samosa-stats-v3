@@ -4,7 +4,7 @@ import {
   LoaderCircleIcon,
 } from "lucide-react";
 
-import { formatEventDate } from "./format-event-date";
+import { formatEventDate } from "@/components/events/utils";
 
 type EventLoadStatusProps = {
   isLoading: boolean;
@@ -54,7 +54,8 @@ export default function EventLoadStatus({
         <div>
           <p className="font-medium">{event.name}</p>
           <p className="text-muted-foreground">
-            {formatEventDate(event.startDate)} - {formatEventDate(event.endDate)}
+            {formatEventDate(event.startDate)} -{" "}
+            {formatEventDate(event.endDate)}
           </p>
         </div>
       </div>

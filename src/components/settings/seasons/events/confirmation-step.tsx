@@ -10,8 +10,8 @@ import {
 import { CheckIcon } from "lucide-react";
 import type { Doc } from "../../../../../convex/_generated/dataModel";
 
-import type { CreateEventModalData } from "./constants";
-import { formatEventDate } from "./format-event-date";
+import type { CreateEventModalData } from "@/components/events/constants";
+import { formatEventDate } from "@/components/events/utils";
 
 export default function ConfirmationStep({
   categories,
@@ -59,7 +59,8 @@ export default function ConfirmationStep({
       <section className="rounded-3xl border bg-secondary/40 p-4">
         <h3 className="font-heading font-medium">Selected categories</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          {selectedCategories.length} categories will be available for this event.
+          {selectedCategories.length} categories will be available for this
+          event.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {selectedCategories.map((category) => (

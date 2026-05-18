@@ -7,7 +7,10 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { api } from "../../../../../convex/_generated/api";
-import { createEventDetailsSchema, type CreateEventModalData } from "./constants";
+import {
+  createEventDetailsSchema,
+  type CreateEventModalData,
+} from "@/components/events/constants";
 
 export default function CreateEventFooter({
   onOpenChange,
@@ -30,7 +33,9 @@ export default function CreateEventFooter({
     data.loadedEvent !== null;
   const canContinueFromCategories = data.selectedCategoryIds.length > 0;
   const canSave =
-    canContinueFromLoad && canContinueFromCategories && data.loadedEvent !== null;
+    canContinueFromLoad &&
+    canContinueFromCategories &&
+    data.loadedEvent !== null;
 
   const handleContinue = () => {
     if (currentStepIndex === 0) {

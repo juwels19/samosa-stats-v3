@@ -7,7 +7,10 @@ import { PlusIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import type { Doc } from "../../../../../convex/_generated/dataModel";
-import { EVENT_MODAL_STEP_COUNT, type CreateEventModalData } from "./constants";
+import {
+  EVENT_MODAL_STEP_COUNT,
+  type CreateEventModalData,
+} from "@/components/events/constants";
 import CreateEventModalContent from "./create-event-modal-content";
 
 type CreateEventProps = {

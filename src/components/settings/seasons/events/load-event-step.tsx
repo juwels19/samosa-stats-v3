@@ -18,9 +18,9 @@ import type { Doc } from "../../../../../convex/_generated/dataModel";
 import {
   createEventDetailsSchema,
   type CreateEventModalData,
-} from "./constants";
+} from "@/components/events/constants";
 import EventLoadStatus from "./event-load-status";
-import { isEventCodeReady } from "./is-event-code-ready";
+import { isEventCodeReady } from "@/components/events/utils";
 
 export default function LoadEventStep({
   activeSeason,

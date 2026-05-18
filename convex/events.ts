@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import {
   internalAction,
   internalMutation,
@@ -9,7 +10,7 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
+import { EVENT_STATUS_SORT_ORDER } from "./lib/events/constants";
 import {
   getEventStatusDiscordMessage,
   getPickSubmissionReminderDiscordMessage,
@@ -19,8 +20,10 @@ import {
   getEventStatusTransitionTimestamps,
   scheduleEventStatusTransitions,
 } from "./lib/events/scheduling";
+import type { EventStatus } from "./lib/events/types";
 import {
   categoryValidator,
+  dashboardEventValidator,
   eventStatusNotificationValidator,
   eventStatusValidator,
   eventValidator,
@@ -73,6 +76,60 @@ export const list = query({
         categories.filter((category) => !category.isGlobal),
       ),
       events: sortEventsByStartDate(events),
+    };
+  },
+});
+
+export const listForDashboard = query({
+  args: {},
+  returns: v.object({
+    activeSeason: v.union(seasonValidator, v.null()),
+    events: v.array(dashboardEventValidator),
+  }),
+  handler: async (ctx) => {
+    const currentUser = await getCurrentUser(ctx);
+
+    if (!currentUser) {
+      throw new Error("Sign in to view dashboard events.");
+    }
+
+    if (!currentUser.isApproved && !currentUser.isAdmin) {
+      throw new Error("Approved access is required to view dashboard events.");
+    }
+
+    const activeSeason = await getActiveSeason(ctx);
+
+    if (activeSeason === null) {
+      return {
+        activeSeason,
+        events: [],
+      };
+    }
+
+    const events = await ctx.db
+      .query("events")
+      .withIndex("bySeason", (q) => q.eq("season", activeSeason._id))
+      .collect();
+
+    const eventsWithSubmittedPicks = await Promise.all(
+      events.map(async (event) => {
+        const pick = await ctx.db
+          .query("picks")
+          .withIndex("byUserAndEvent", (q) =>
+            q.eq("user", currentUser._id).eq("event", event._id),
+          )
+          .first();
+
+        return {
+          ...event,
+          hasSubmittedPicks: pick !== null,
+        };
+      }),
+    );
+
+    return {
+      activeSeason,
+      events: sortEventsForDashboard(eventsWithSubmittedPicks),
     };
   },
 });
@@ -332,4 +389,29 @@ function sortEventsByStartDate<TEvent extends { startDate: string }>(
   events: TEvent[],
 ) {
   return events.toSorted((a, b) => a.startDate.localeCompare(b.startDate));
+}
+
+function sortEventsForDashboard<
+  TEvent extends {
+    status: EventStatus;
+    startDate: string;
+    displayName: string;
+  },
+>(events: TEvent[]) {
+  return events.toSorted((a, b) => {
+    const statusOrder =
+      EVENT_STATUS_SORT_ORDER[a.status] - EVENT_STATUS_SORT_ORDER[b.status];
+
+    if (statusOrder !== 0) {
+      return statusOrder;
+    }
+
+    const startDateOrder = a.startDate.localeCompare(b.startDate);
+
+    if (startDateOrder !== 0) {
+      return startDateOrder;
+    }
+
+    return a.displayName.localeCompare(b.displayName);
+  });
 }

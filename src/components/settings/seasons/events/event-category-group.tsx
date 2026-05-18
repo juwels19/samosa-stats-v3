@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/item";
 import type { Doc } from "../../../../../convex/_generated/dataModel";
 
-import type { CreateEventModalData } from "./constants";
+import type { CreateEventModalData } from "@/components/events/constants";
 
 export default function EventCategoryGroup({
   title,

@@ -77,4 +77,5 @@ export default defineSchema({
     teams: v.array(v.id('categories')),
     categories: v.array(v.id('categories'))
   })
+    .index("byUserAndEvent", ["user", "event"])
 })

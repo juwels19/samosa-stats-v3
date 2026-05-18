@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -5,34 +6,29 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import type { Doc } from "../../../../../convex/_generated/dataModel";
+import { CheckCircle2Icon } from "lucide-react";
 
-import { EVENT_STATUS_LABELS } from "@/components/events/constants";
+import { EVENT_STATUS_BADGE_VARIANTS, EVENT_STATUS_LABELS } from "./constants";
 import { formatEventDate } from "@/components/events/utils";
+import type { EventCardEvent } from "./types";
 
-export default function EventCard({ event }: { event: Doc<"events"> }) {
-  const getStatusBadgeVariant = (status: Doc<"events">["status"]) => {
-    switch (status) {
-      case "UPCOMING":
-        return "secondary";
-      case "SUBMISSIONS_OPEN":
-      case "COMPLETE":
-        return "success";
-      case "SUBMISSIONS_CLOSED":
-        return "destructive";
-      case "ONGOING":
-        return "default";
-    }
-  };
+export default function EventCard({ event }: { event: EventCardEvent }) {
   return (
     <Card size="sm" role="listitem">
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
           <CardTitle>{event.displayName}</CardTitle>
-          <Badge variant={getStatusBadgeVariant(event.status)}>
-            {EVENT_STATUS_LABELS[event.status]}
-          </Badge>
+          <div className="flex flex-wrap justify-end gap-2">
+            {event.hasSubmittedPicks ? (
+              <Badge variant="success" className="gap-1">
+                <CheckCircle2Icon className="size-3" aria-hidden="true" />
+                Picks submitted
+              </Badge>
+            ) : null}
+            <Badge variant={EVENT_STATUS_BADGE_VARIANTS[event.status]}>
+              {EVENT_STATUS_LABELS[event.status]}
+            </Badge>
+          </div>
         </div>
         <CardDescription>
           {event.name}

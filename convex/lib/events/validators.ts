@@ -97,3 +97,19 @@ export function validateEventFields({
     throw new Error("Select at least one category.");
   }
 }
+
+export const dashboardEventValidator = v.object({
+  _id: v.id("events"),
+  _creationTime: v.number(),
+  name: v.string(),
+  displayName: v.string(),
+  season: v.id("seasons"),
+  eventCode: v.string(),
+  startDate: v.string(),
+  endDate: v.string(),
+  numberOfTeamPicks: v.int64(),
+  numberOfCategoryPicks: v.int64(),
+  categories: v.array(v.id("categories")),
+  status: eventStatusValidator,
+  hasSubmittedPicks: v.boolean(),
+});

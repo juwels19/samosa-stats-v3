@@ -13,8 +13,8 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { useQuery } from "convex/react";
 
 import { api } from "../../../../../convex/_generated/api";
+import EventCard from "@/components/events/event-card";
 import CreateEvent from "./create-event";
-import EventCard from "./event-card";
 import EventsEmptyState from "./events-empty";
 
 export default function EventsList() {

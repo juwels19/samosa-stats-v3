@@ -11,8 +11,14 @@ export default function CategorySelectionStep({
 }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <EventCategoryGroup title="Global categories" categories={globalCategories} />
-      <EventCategoryGroup title="Season categories" categories={seasonCategories} />
+      <EventCategoryGroup
+        title="Global categories"
+        categories={globalCategories}
+      />
+      <EventCategoryGroup
+        title="Season categories"
+        categories={seasonCategories}
+      />
     </div>
   );
 }
