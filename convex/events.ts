@@ -1,50 +1,33 @@
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import {
+  internalAction,
+  internalMutation,
+  internalQuery,
   mutation,
   query,
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
+import {
+  getEventStatusDiscordMessage,
+  getPickSubmissionReminderDiscordMessage,
+  sendDiscordMessage,
+} from "./lib/events/discord";
+import {
+  getEventStatusTransitionTimestamps,
+  scheduleEventStatusTransitions,
+} from "./lib/events/scheduling";
+import {
+  categoryValidator,
+  eventStatusNotificationValidator,
+  eventStatusValidator,
+  eventValidator,
+  seasonValidator,
+  validateEventFields,
+} from "./lib/events/validators";
 import { getCurrentUser } from "./users";
-
-const seasonValidator = v.object({
-  _id: v.id("seasons"),
-  _creationTime: v.number(),
-  year: v.number(),
-  gameName: v.string(),
-  isActive: v.boolean(),
-});
-
-const categoryValidator = v.object({
-  _id: v.id("categories"),
-  _creationTime: v.number(),
-  text: v.string(),
-  scoringDescription: v.string(),
-  season: v.id("seasons"),
-  isGlobal: v.boolean(),
-});
-
-const eventValidator = v.object({
-  _id: v.id("events"),
-  _creationTime: v.number(),
-  name: v.string(),
-  displayName: v.string(),
-  season: v.id("seasons"),
-  eventCode: v.string(),
-  startDate: v.string(),
-  endDate: v.string(),
-  numberOfTeamPicks: v.int64(),
-  numberOfCategoryPicks: v.int64(),
-  categories: v.array(v.id("categories")),
-  status: v.union(
-    v.literal("UPCOMING"),
-    v.literal("SUBMISSIONS_OPEN"),
-    v.literal("SUBMISSIONS_CLOSED"),
-    v.literal("ONGOING"),
-    v.literal("COMPLETE"),
-  ),
-});
 
 export const list = query({
   args: {},
@@ -139,7 +122,11 @@ export const create = mutation({
     await assertEventDoesNotExistForSeason(ctx, eventCode, activeSeason._id);
     await assertCategoriesBelongToSeason(ctx, args.categories, activeSeason._id);
 
-    return await ctx.db.insert("events", {
+    const transitionTimestamps = getEventStatusTransitionTimestamps({
+      startDate,
+      endDate,
+    });
+    const eventId = await ctx.db.insert("events", {
       name,
       displayName,
       season: activeSeason._id,
@@ -151,6 +138,139 @@ export const create = mutation({
       categories: args.categories,
       status: "UPCOMING",
     });
+
+    await scheduleEventStatusTransitions(ctx, {
+      eventId,
+      transitionTimestamps,
+    });
+
+    return eventId;
+  },
+});
+
+export const announceSubmissionsOpen = internalAction({
+  args: {
+    eventId: v.id("events"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const event = await ctx.runMutation(internal.events.setStatus, {
+      eventId: args.eventId,
+      status: "SUBMISSIONS_OPEN",
+    });
+
+    await sendDiscordMessage({
+      content: getEventStatusDiscordMessage(event),
+    });
+
+    return null;
+  },
+});
+
+export const announceSubmissionsClosed = internalAction({
+  args: {
+    eventId: v.id("events"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const event = await ctx.runMutation(internal.events.setStatus, {
+      eventId: args.eventId,
+      status: "SUBMISSIONS_CLOSED",
+    });
+
+    await sendDiscordMessage({
+      content: getEventStatusDiscordMessage(event),
+    });
+
+    return null;
+  },
+});
+
+export const announceOngoing = internalAction({
+  args: {
+    eventId: v.id("events"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const event = await ctx.runMutation(internal.events.setStatus, {
+      eventId: args.eventId,
+      status: "ONGOING",
+    });
+
+    await sendDiscordMessage({
+      content: getEventStatusDiscordMessage(event),
+    });
+
+    return null;
+  },
+});
+
+export const sendPickSubmissionReminder = internalAction({
+  args: {
+    eventId: v.id("events"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const event = await ctx.runQuery(internal.events.getForNotification, {
+      eventId: args.eventId,
+    });
+
+    await sendDiscordMessage({
+      content: getPickSubmissionReminderDiscordMessage(event),
+    });
+
+    return null;
+  },
+});
+
+export const setStatus = internalMutation({
+  args: {
+    eventId: v.id("events"),
+    status: eventStatusValidator,
+  },
+  returns: eventStatusNotificationValidator,
+  handler: async (ctx, args) => {
+    const event = await ctx.db.get(args.eventId);
+
+    if (event === null) {
+      throw new Error("Event not found.");
+    }
+
+    await ctx.db.patch(args.eventId, {
+      status: args.status,
+    });
+
+    return {
+      _id: event._id,
+      displayName: event.displayName,
+      eventCode: event.eventCode,
+      startDate: event.startDate,
+      endDate: event.endDate,
+      status: args.status,
+    };
+  },
+});
+
+export const getForNotification = internalQuery({
+  args: {
+    eventId: v.id("events"),
+  },
+  returns: eventStatusNotificationValidator,
+  handler: async (ctx, args) => {
+    const event = await ctx.db.get(args.eventId);
+
+    if (event === null) {
+      throw new Error("Event not found.");
+    }
+
+    return {
+      _id: event._id,
+      displayName: event.displayName,
+      eventCode: event.eventCode,
+      startDate: event.startDate,
+      endDate: event.endDate,
+      status: event.status,
+    };
   },
 });
 
@@ -195,54 +315,6 @@ async function assertCategoriesBelongToSeason(
     if (category === null || category.season !== seasonId) {
       throw new Error("Selected categories must belong to the active season.");
     }
-  }
-}
-
-function validateEventFields({
-  name,
-  displayName,
-  eventCode,
-  startDate,
-  endDate,
-  numberOfTeamPicks,
-  numberOfCategoryPicks,
-  categories,
-}: {
-  name: string;
-  displayName: string;
-  eventCode: string;
-  startDate: string;
-  endDate: string;
-  numberOfTeamPicks: bigint;
-  numberOfCategoryPicks: bigint;
-  categories: Id<"categories">[];
-}) {
-  if (name.length === 0) {
-    throw new Error("Official event name is required.");
-  }
-
-  if (displayName.length === 0) {
-    throw new Error("Display name is required.");
-  }
-
-  if (eventCode.length === 0) {
-    throw new Error("Event code is required.");
-  }
-
-  if (startDate.length === 0 || endDate.length === 0) {
-    throw new Error("Event dates are required.");
-  }
-
-  if (numberOfTeamPicks <= BigInt(0)) {
-    throw new Error("Number of team picks must be greater than zero.");
-  }
-
-  if (numberOfCategoryPicks <= BigInt(0)) {
-    throw new Error("Number of category picks must be greater than zero.");
-  }
-
-  if (categories.length === 0) {
-    throw new Error("Select at least one category.");
   }
 }
 

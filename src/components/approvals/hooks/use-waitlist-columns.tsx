@@ -4,7 +4,7 @@ import type { SerializedWaitlistEntry } from "@/lib/clerk/types";
 import { ArrowUpDownIcon } from "lucide-react";
 import WaitlistEntryActions from "@/components/approvals/components/waitlist-entry-actions";
 import { WaitlistEntryAction } from "@/components/approvals/types";
-import { DATE_FORMATTER } from "@/components/approvals/constants";
+import { formatApprovalDate } from "@/components/approvals/format-approval-date";
 import WaitlistEntryStatus from "@/components/approvals/components/waitlist-entry-status";
 
 export default function useWaitlistColumns({
@@ -66,7 +66,7 @@ export default function useWaitlistColumns({
       ),
       cell: ({ row }) => (
         <span className="text-muted-foreground">
-          {DATE_FORMATTER.format(row.original.createdAt)}
+          {formatApprovalDate(row.original.createdAt)}
         </span>
       ),
     },

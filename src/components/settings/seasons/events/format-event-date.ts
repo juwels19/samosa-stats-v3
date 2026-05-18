@@ -1,16 +1,11 @@
-const eventDateFormatter = new Intl.DateTimeFormat("en-US", {
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-});
+import { format, isValid, parseISO } from "date-fns";
 
 export function formatEventDate(date: string) {
-  const parsedDate = new Date(date.includes("T") ? date : `${date}T00:00:00`);
+  const parsedDate = parseISO(date.includes("T") ? date : `${date}T00:00:00`);
 
-  if (Number.isNaN(parsedDate.getTime())) {
+  if (!isValid(parsedDate)) {
     return date;
   }
 
-  return eventDateFormatter.format(parsedDate);
+  return format(parsedDate, "EEE, MMM d, yyyy");
 }

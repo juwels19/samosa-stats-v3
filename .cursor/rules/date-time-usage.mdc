@@ -1,0 +1,11 @@
+---
+description: Use date-fns for date and time logic
+alwaysApply: true
+---
+
+# Date And Time Usage
+
+- Use `date-fns` for date parsing, formatting, arithmetic, and comparisons.
+- Use `date-fns-tz` when code needs explicit timezone conversion.
+- Do not introduce `Intl.DateTimeFormat` or hand-rolled timezone math for app date/time behavior.
+- Keep date/time helpers in nearby utility files when they are used by components.

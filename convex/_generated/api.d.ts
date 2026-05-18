@@ -11,6 +11,11 @@
 import type * as categories from "../categories.js";
 import type * as events from "../events.js";
 import type * as http from "../http.js";
+import type * as lib_events_constants from "../lib/events/constants.js";
+import type * as lib_events_discord from "../lib/events/discord.js";
+import type * as lib_events_scheduling from "../lib/events/scheduling.js";
+import type * as lib_events_types from "../lib/events/types.js";
+import type * as lib_events_validators from "../lib/events/validators.js";
 import type * as seasons from "../seasons.js";
 import type * as users from "../users.js";
 
@@ -24,6 +29,11 @@ declare const fullApi: ApiFromModules<{
   categories: typeof categories;
   events: typeof events;
   http: typeof http;
+  "lib/events/constants": typeof lib_events_constants;
+  "lib/events/discord": typeof lib_events_discord;
+  "lib/events/scheduling": typeof lib_events_scheduling;
+  "lib/events/types": typeof lib_events_types;
+  "lib/events/validators": typeof lib_events_validators;
   seasons: typeof seasons;
   users: typeof users;
 }>;
