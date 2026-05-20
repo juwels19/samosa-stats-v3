@@ -79,6 +79,7 @@ export default function CreateEventFooter({
         numberOfTeamPicks: BigInt(data.numberOfTeamPicks),
         numberOfCategoryPicks: BigInt(data.numberOfCategoryPicks),
         categories: data.selectedCategoryIds,
+        teams: data.loadedEvent.teams,
       });
       toast.success("Event saved", {
         description: `${data.displayName.trim()} has been added.`,

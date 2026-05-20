@@ -6,6 +6,7 @@ import "@/components/dotmatrix-loader.css";
 import { useDotMatrixPhases, usePrefersReducedMotion } from "@/lib/dotmatrix-hooks";
 
 export type MatrixPattern = "diamond" | "full" | "outline" | "rose" | "cross" | "rings";
+export type DotShape = "circle" | "square" | "diamond" | "hearts";
 export type DotMatrixPhase = "idle" | "collapse" | "hoverRipple" | "loadingRipple";
 export type DotMatrixColorPreset =
   | "solid-theme"
@@ -93,6 +94,7 @@ export interface DotMatrixCommonProps {
   animated?: boolean;
   hoverAnimated?: boolean;
   dotClassName?: string;
+  dotShape?: DotShape;
   opacityBase?: number;
   opacityMid?: number;
   opacityPeak?: number;
@@ -633,7 +635,7 @@ export function dmxDotBloomParts(
   const remapped = remapOpacityToTriplet(curveOpacity, ob, om, op);
   const fromBloom = bloom ? opacityToBloomLevel(remapped) : 0;
   return {
-    level: Math.max(haloN, fromBloom),
+    level: fromBloom,
     bloomDot: haloN > 0 || (bloom && remappedOpacityQualifiesForBloom(remapped))
   };
 }
@@ -695,6 +697,7 @@ export function DotMatrixBase({
   ariaLabel = "Loading",
   className,
   pattern = "diamond",
+  dotShape = "circle",
   muted = false,
   bloom = false,
   halo = 0,
@@ -729,6 +732,7 @@ export function DotMatrixBase({
     height: matrixSpan,
     "--dmx-speed": speedScale,
     ["--dmx-dot-size" as const]: `${dotSize}px`,
+    ["--dmx-halo-level" as const]: halo,
     ["--dmx-dot-fill" as const]: dotFill,
     color: resolvedColor,
     ...(ob !== undefined && { ["--dmx-opacity-base" as const]: ob }),
@@ -833,6 +837,7 @@ export function DotMatrixBase({
     <div
       className={cx(
         "dmx-root",
+        `dmx-dot-shape-${dotShape}`,
         muted && "dmx-muted",
         dmxBloomRootActive(bloom, halo) && "dmx-bloom",
         dmxBloomHaloSpreadClass(halo),
@@ -876,6 +881,7 @@ export function DotMatrixBase({
       aria-label={ariaLabel}
       className={cx(
         "dmx-root",
+        `dmx-dot-shape-${dotShape}`,
         muted && "dmx-muted",
         dmxBloomRootActive(bloom, halo) && "dmx-bloom",
         dmxBloomHaloSpreadClass(halo),

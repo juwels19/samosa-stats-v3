@@ -25,6 +25,10 @@ export type LoadedFrcEvent = {
   name: string;
   startDate: string;
   endDate: string;
+  teams: {
+    name: string;
+    number: number;
+  }[];
 };
 
 export const createEventDetailsSchema = z.object({

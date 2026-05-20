@@ -1,36 +1,51 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
 import {
   internalAction,
   internalMutation,
   internalQuery,
   mutation,
   query,
-  type MutationCtx,
-  type QueryCtx,
 } from "./_generated/server";
-import { EVENT_STATUS_SORT_ORDER } from "./lib/events/constants";
 import {
   getEventStatusDiscordMessage,
   getPickSubmissionReminderDiscordMessage,
   sendDiscordMessage,
 } from "./lib/events/discord";
 import {
+  assertCategoriesBelongToSeason,
+  assertEventDoesNotExistForSeason,
+  getActiveSeason,
+  getTeamSyncDetailsForEvent,
+} from "./lib/events/data";
+import { normalizeEventCode } from "./lib/events/normalize_event_code";
+import {
   getEventStatusTransitionTimestamps,
   scheduleEventStatusTransitions,
 } from "./lib/events/scheduling";
-import type { EventStatus } from "./lib/events/types";
+import {
+  sortCategoriesByText,
+  sortEventsByStartDate,
+  sortEventsForDashboard,
+} from "./lib/events/sort";
+import {
+  canRefreshTeamsForEvent,
+  syncEventTeams,
+} from "./lib/events/team_sync";
 import {
   categoryValidator,
   dashboardEventValidator,
   eventStatusNotificationValidator,
   eventStatusValidator,
   eventValidator,
+  frcEventTeamValidator,
   seasonValidator,
+  teamSyncDetailsValidator,
+  teamSyncResultValidator,
   validateEventFields,
 } from "./lib/events/validators";
 import { getCurrentUser } from "./users";
+import { getTeamsForYearAndCode } from "../src/lib/fetch/frc-events";
 
 export const list = query({
   args: {},
@@ -144,6 +159,7 @@ export const create = mutation({
     numberOfTeamPicks: v.int64(),
     numberOfCategoryPicks: v.int64(),
     categories: v.array(v.id("categories")),
+    teams: v.array(frcEventTeamValidator),
   },
   returns: v.id("events"),
   async handler(ctx, args) {
@@ -200,8 +216,38 @@ export const create = mutation({
       eventId,
       transitionTimestamps,
     });
+    await syncEventTeams(ctx, eventId, args.teams);
 
     return eventId;
+  },
+});
+
+export const refreshTeams = mutation({
+  args: {
+    eventId: v.id("events"),
+    teams: v.array(frcEventTeamValidator),
+  },
+  returns: teamSyncResultValidator,
+  async handler(ctx, args) {
+    const currentUser = await getCurrentUser(ctx);
+
+    if (!currentUser?.isAdmin) {
+      throw new Error("Only admins can refresh event teams.");
+    }
+
+    const event = await ctx.db.get(args.eventId);
+
+    if (event === null) {
+      throw new Error("Event not found.");
+    }
+
+    if (!canRefreshTeamsForEvent(event.status)) {
+      throw new Error(
+        "Teams can only be refreshed for upcoming events or open submissions.",
+      );
+    }
+
+    return await syncEventTeams(ctx, args.eventId, args.teams);
   },
 });
 
@@ -234,6 +280,29 @@ export const announceSubmissionsClosed = internalAction({
       eventId: args.eventId,
       status: "SUBMISSIONS_CLOSED",
     });
+
+    try {
+      const teamSyncDetails = await ctx.runQuery(
+        internal.events.getTeamSyncDetails,
+        {
+          eventId: args.eventId,
+        },
+      );
+      const teams = await getTeamsForYearAndCode({
+        year: teamSyncDetails.seasonYear,
+        eventCode: teamSyncDetails.eventCode,
+      });
+
+      await ctx.runMutation(internal.events.syncTeams, {
+        eventId: args.eventId,
+        teams,
+      });
+    } catch (error) {
+      console.warn("Unable to refresh event teams before closing submissions.", {
+        eventId: args.eventId,
+        error,
+      });
+    }
 
     await sendDiscordMessage({
       content: getEventStatusDiscordMessage(event),
@@ -331,87 +400,23 @@ export const getForNotification = internalQuery({
   },
 });
 
-async function getActiveSeason(ctx: QueryCtx | MutationCtx) {
-  return await ctx.db
-    .query("seasons")
-    .withIndex("byIsActive", (q) => q.eq("isActive", true))
-    .first();
-}
-
-async function assertEventDoesNotExistForSeason(
-  ctx: MutationCtx,
-  eventCode: string,
-  seasonId: Id<"seasons">,
-) {
-  const existingEvent = await ctx.db
-    .query("events")
-    .withIndex("bySeasonAndEventCode", (q) =>
-      q.eq("season", seasonId).eq("eventCode", eventCode),
-    )
-    .unique();
-
-  if (existingEvent !== null) {
-    throw new Error(`Event "${eventCode}" already exists for the active season.`);
-  }
-}
-
-async function assertCategoriesBelongToSeason(
-  ctx: MutationCtx,
-  categoryIds: Id<"categories">[],
-  seasonId: Id<"seasons">,
-) {
-  const uniqueCategoryIds = new Set(categoryIds);
-
-  if (uniqueCategoryIds.size !== categoryIds.length) {
-    throw new Error("Selected categories must be unique.");
-  }
-
-  for (const categoryId of uniqueCategoryIds) {
-    const category = await ctx.db.get(categoryId);
-
-    if (category === null || category.season !== seasonId) {
-      throw new Error("Selected categories must belong to the active season.");
-    }
-  }
-}
-
-function normalizeEventCode(eventCode: string) {
-  return eventCode.trim().toUpperCase();
-}
-
-function sortCategoriesByText<TCategory extends { text: string }>(
-  categories: TCategory[],
-) {
-  return categories.toSorted((a, b) => a.text.localeCompare(b.text));
-}
-
-function sortEventsByStartDate<TEvent extends { startDate: string }>(
-  events: TEvent[],
-) {
-  return events.toSorted((a, b) => a.startDate.localeCompare(b.startDate));
-}
-
-function sortEventsForDashboard<
-  TEvent extends {
-    status: EventStatus;
-    startDate: string;
-    displayName: string;
+export const getTeamSyncDetails = internalQuery({
+  args: {
+    eventId: v.id("events"),
   },
->(events: TEvent[]) {
-  return events.toSorted((a, b) => {
-    const statusOrder =
-      EVENT_STATUS_SORT_ORDER[a.status] - EVENT_STATUS_SORT_ORDER[b.status];
+  returns: teamSyncDetailsValidator,
+  handler: async (ctx, args) => {
+    return await getTeamSyncDetailsForEvent(ctx, args.eventId);
+  },
+});
 
-    if (statusOrder !== 0) {
-      return statusOrder;
-    }
-
-    const startDateOrder = a.startDate.localeCompare(b.startDate);
-
-    if (startDateOrder !== 0) {
-      return startDateOrder;
-    }
-
-    return a.displayName.localeCompare(b.displayName);
-  });
-}
+export const syncTeams = internalMutation({
+  args: {
+    eventId: v.id("events"),
+    teams: v.array(frcEventTeamValidator),
+  },
+  returns: teamSyncResultValidator,
+  handler: async (ctx, args) => {
+    return await syncEventTeams(ctx, args.eventId, args.teams);
+  },
+});

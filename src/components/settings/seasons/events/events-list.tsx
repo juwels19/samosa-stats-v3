@@ -16,6 +16,7 @@ import { api } from "../../../../../convex/_generated/api";
 import EventCard from "@/components/events/event-card";
 import CreateEvent from "./create-event";
 import EventsEmptyState from "./events-empty";
+import RefreshEventTeamsButton from "./refresh-event-teams-button";
 
 export default function EventsList() {
   const currentUser = useCurrentUser();
@@ -54,7 +55,18 @@ export default function EventsList() {
         ) : (
           <div role="list" className="grid gap-4 lg:grid-cols-2">
             {eventData.events.map((event) => (
-              <EventCard key={event._id} event={event} />
+              <EventCard
+                key={event._id}
+                event={event}
+                footer={
+                  eventData.activeSeason === null ? null : (
+                    <RefreshEventTeamsButton
+                      event={event}
+                      seasonYear={eventData.activeSeason.year}
+                    />
+                  )
+                }
+              />
             ))}
           </div>
         )}

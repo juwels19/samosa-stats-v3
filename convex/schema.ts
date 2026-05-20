@@ -30,7 +30,7 @@ export default defineSchema({
   seasons: defineTable({
     year: v.number(),
     gameName: v.string(),
-    isActive: v.boolean()
+    isActive: v.boolean(),
   })
     .index("byYear", ["year"])
     .index("byIsActive", ["isActive"]),
@@ -56,26 +56,39 @@ export default defineSchema({
     .index("bySeasonAndEventCode", ["season", "eventCode"]),
   teams: defineTable({
     name: v.string(),
-    number: v.int64()
-  }),
+    number: v.int64(),
+  }).index("byNumber", ["number"]),
+  eventTeams: defineTable({
+    event: v.id("events"),
+    team: v.id("teams"),
+  })
+    .index("byEvent", ["event"])
+    .index("byTeam", ["team"])
+    .index("byEventAndTeam", ["event", "team"]),
   categories: defineTable({
     text: v.string(),
     scoringDescription: v.string(),
     season: v.id("seasons"),
-    isGlobal: v.boolean()
+    isGlobal: v.boolean(),
   })
     .index("bySeason", ["season"])
     .index("bySeasonAndIsGlobal", ["season", "isGlobal"]),
   picks: defineTable({
-    event: v.id('events'),
-    user: v.id('users'),
+    event: v.id("events"),
+    user: v.id("users"),
     userFullName: v.string(),
     displayName: v.optional(v.string()),
     isRandom: v.boolean(),
     score: v.number(),
     rank: v.int64(),
-    teams: v.array(v.id('categories')),
-    categories: v.array(v.id('categories'))
+    categories: v.array(v.id("categories")),
   })
-    .index("byUserAndEvent", ["user", "event"])
+    .index("byUserAndEvent", ["user", "event"]),
+  pickTeams: defineTable({
+    pick: v.id("picks"),
+    team: v.id("teams"),
+  })
+    .index("byPick", ["pick"])
+    .index("byTeam", ["team"])
+    .index("byPickAndTeam", ["pick", "team"]),
 })

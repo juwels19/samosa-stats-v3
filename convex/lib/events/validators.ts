@@ -50,6 +50,20 @@ export const eventStatusNotificationValidator = v.object({
   status: eventStatusValidator,
 });
 
+export const frcEventTeamValidator = v.object({
+  name: v.string(),
+  number: v.number(),
+});
+
+export const teamSyncResultValidator = v.object({
+  savedTeamCount: v.number(),
+});
+
+export const teamSyncDetailsValidator = v.object({
+  eventCode: v.string(),
+  seasonYear: v.number(),
+});
+
 export function validateEventFields({
   name,
   displayName,
