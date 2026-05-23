@@ -76,11 +76,8 @@ export default defineSchema({
   picks: defineTable({
     event: v.id("events"),
     user: v.id("users"),
-    userFullName: v.string(),
     displayName: v.optional(v.string()),
     isRandom: v.boolean(),
-    score: v.number(),
-    rank: v.int64(),
     categories: v.array(v.id("categories")),
   })
     .index("byUserAndEvent", ["user", "event"]),
@@ -91,4 +88,11 @@ export default defineSchema({
     .index("byPick", ["pick"])
     .index("byTeam", ["team"])
     .index("byPickAndTeam", ["pick", "team"]),
+  pickCategories: defineTable({
+    pick: v.id("picks"),
+    category: v.id("categories"),
+  })
+    .index("byPick", ["pick"])
+    .index("byCategory", ["category"])
+    .index("byPickAndCategory", ["pick", "category"]),
 })

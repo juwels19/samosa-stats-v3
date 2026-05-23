@@ -20,6 +20,13 @@ import type * as lib_events_sort from "../lib/events/sort.js";
 import type * as lib_events_team_sync from "../lib/events/team_sync.js";
 import type * as lib_events_types from "../lib/events/types.js";
 import type * as lib_events_validators from "../lib/events/validators.js";
+import type * as lib_picks_constants from "../lib/picks/constants.js";
+import type * as lib_picks_get_event_submission_data from "../lib/picks/get_event_submission_data.js";
+import type * as lib_picks_replace_pick_selections from "../lib/picks/replace_pick_selections.js";
+import type * as lib_picks_split_event_categories from "../lib/picks/split_event_categories.js";
+import type * as lib_picks_validate_pick_submission from "../lib/picks/validate_pick_submission.js";
+import type * as lib_picks_validators from "../lib/picks/validators.js";
+import type * as picks from "../picks.js";
 import type * as seasons from "../seasons.js";
 import type * as users from "../users.js";
 
@@ -42,6 +49,13 @@ declare const fullApi: ApiFromModules<{
   "lib/events/team_sync": typeof lib_events_team_sync;
   "lib/events/types": typeof lib_events_types;
   "lib/events/validators": typeof lib_events_validators;
+  "lib/picks/constants": typeof lib_picks_constants;
+  "lib/picks/get_event_submission_data": typeof lib_picks_get_event_submission_data;
+  "lib/picks/replace_pick_selections": typeof lib_picks_replace_pick_selections;
+  "lib/picks/split_event_categories": typeof lib_picks_split_event_categories;
+  "lib/picks/validate_pick_submission": typeof lib_picks_validate_pick_submission;
+  "lib/picks/validators": typeof lib_picks_validators;
+  picks: typeof picks;
   seasons: typeof seasons;
   users: typeof users;
 }>;

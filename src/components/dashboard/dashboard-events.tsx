@@ -1,6 +1,7 @@
 "use client";
 
 import EventCard from "@/components/events/event-card";
+import { Button } from "@/components/ui/button";
 import {
   Empty,
   EmptyDescription,
@@ -9,8 +10,11 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getEventPicksCtaLabel } from "@/components/dashboard/get-event-picks-cta-label";
+import { getPicksRoute } from "@/lib/routes";
 import { useConvexAuth, useQuery } from "convex/react";
 import { CalendarDaysIcon } from "lucide-react";
+import Link from "next/link";
 
 import { api } from "../../../convex/_generated/api";
 
@@ -41,7 +45,19 @@ export default function DashboardEvents() {
   ) : (
     <div role="list" className="grid gap-4 lg:grid-cols-2">
       {eventData.events.map((event) => (
-        <EventCard key={event._id} event={event} />
+        <EventCard
+          key={event._id}
+          event={event}
+          footer={
+            event.status !== "UPCOMING" && (
+              <Button asChild>
+                <Link href={getPicksRoute(event.eventCode)}>
+                  {getEventPicksCtaLabel(event)}
+                </Link>
+              </Button>
+            )
+          }
+        />
       ))}
     </div>
   );

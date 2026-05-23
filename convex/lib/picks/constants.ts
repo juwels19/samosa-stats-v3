@@ -1,0 +1,1 @@
+export const MAX_PICK_DISPLAY_NAME_LENGTH = 250;
