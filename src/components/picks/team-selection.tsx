@@ -1,13 +1,13 @@
+"use client";
+
+import { SearchField } from "@heroui/react";
+import { useState } from "react";
 import type { Id } from "../../../convex/_generated/dataModel";
+import PickSection from "./pick-section";
 import PickSelectionGrid from "./pick-selection-grid";
 import type { PickSubmissionTeam } from "./pick-submission-types";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+
+const SEARCH_THRESHOLD = 12;
 
 export default function TeamSelection({
   teams,
@@ -22,30 +22,56 @@ export default function TeamSelection({
   readOnly?: boolean;
   onToggleTeam: (teamId: Id<"teams">) => void;
 }) {
-  const selectionFull = selectedTeamIds.length >= requiredTeamCount;
+  const [query, setQuery] = useState("");
+  const normalizedQuery = query.trim().toLowerCase();
+  const visibleTeams = normalizedQuery
+    ? teams.filter(
+        (team) =>
+          team.number.toString().includes(normalizedQuery) ||
+          team.name.toLowerCase().includes(normalizedQuery),
+      )
+    : teams;
 
   return (
-    <Card className="bg-background/60">
-      <CardHeader>
-        <CardTitle>Teams</CardTitle>
-        <CardAction className="shrink-0 rounded-full bg-secondary px-3 py-1 text-sm font-medium">
-          {selectedTeamIds.length} / {requiredTeamCount}
-        </CardAction>
-      </CardHeader>
-      <CardContent>
+    <PickSection
+      id="teams"
+      title="Teams"
+      selectedCount={selectedTeamIds.length}
+      requiredCount={requiredTeamCount}
+      toolbar={
+        teams.length > SEARCH_THRESHOLD ? (
+          <SearchField
+            aria-label="Search teams"
+            value={query}
+            onChange={setQuery}
+            fullWidth
+          >
+            <SearchField.Group>
+              <SearchField.SearchIcon />
+              <SearchField.Input placeholder="Search by number or name" />
+              <SearchField.ClearButton />
+            </SearchField.Group>
+          </SearchField>
+        ) : null
+      }
+    >
+      {visibleTeams.length === 0 ? (
+        <p className="py-6 text-center text-sm text-muted">
+          No teams match &ldquo;{query}&rdquo;.
+        </p>
+      ) : (
         <PickSelectionGrid
-          items={teams.map((team) => ({
+          items={visibleTeams.map((team) => ({
             id: team._id,
-            label: `Team ${team.number.toString()}`,
+            label: team.number.toString(),
             detail: team.name,
           }))}
           selectedIds={selectedTeamIds}
-          selectionFull={selectionFull}
-          idPrefix="pick-team"
+          selectionFull={selectedTeamIds.length >= requiredTeamCount}
           readOnly={readOnly}
           onToggle={(teamId) => onToggleTeam(teamId as Id<"teams">)}
         />
-      </CardContent>
-    </Card>
+      )}
+    </PickSection>
   );
 }

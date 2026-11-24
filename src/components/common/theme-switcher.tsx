@@ -1,32 +1,22 @@
 "use client";
 
+import { Button } from "@heroui/react";
 import { useTheme } from "next-themes";
-import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { MoonIcon, SunIcon } from "lucide-react";
 
 export default function ThemeSwitcher() {
-  const [mounted, setMounted] = useState(false);
-  const { theme, setTheme } = useTheme();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return <Skeleton className="size-9 rounded-md" />;
-  }
+  const { resolvedTheme, setTheme } = useTheme();
 
   return (
     <Button
+      isIconOnly
       variant="ghost"
-      size="icon"
-      onClick={() => (theme === "light" ? setTheme("dark") : setTheme("light"))}
+      className="size-11"
       aria-label="Toggle theme"
+      onPress={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
     >
-      <SunIcon className="hidden dark:block size-5" />
-      <MoonIcon className="block dark:hidden size-5" />
+      <SunIcon className="hidden size-5 dark:block" />
+      <MoonIcon className="block size-5 dark:hidden" />
     </Button>
   );
 }

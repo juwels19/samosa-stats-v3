@@ -1,8 +1,5 @@
-import {
-  AlertCircleIcon,
-  CalendarCheckIcon,
-  LoaderCircleIcon,
-} from "lucide-react";
+import { Alert, Spinner } from "@heroui/react";
+import { CalendarCheckIcon } from "lucide-react";
 
 import { formatEventDate } from "@/components/events/utils";
 
@@ -23,48 +20,52 @@ export default function EventLoadStatus({
 }: EventLoadStatusProps) {
   if (isLoading) {
     return (
-      <div className="flex items-start gap-3 rounded-3xl border bg-secondary/60 p-4 text-sm">
-        <LoaderCircleIcon className="mt-0.5 animate-spin" />
-        <div>
-          <p className="font-medium">Loading event details...</p>
-          <p className="text-muted-foreground">
+      <Alert status="default">
+        <Alert.Indicator>
+          <Spinner color="current" size="sm" />
+        </Alert.Indicator>
+        <Alert.Content>
+          <Alert.Title>Loading event details</Alert.Title>
+          <Alert.Description>
             Checking the FRC Events API for a matching event.
-          </p>
-        </div>
-      </div>
+          </Alert.Description>
+        </Alert.Content>
+      </Alert>
     );
   }
 
   if (error !== null) {
     return (
-      <div className="flex items-start gap-3 rounded-3xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-        <AlertCircleIcon className="mt-0.5" />
-        <div>
-          <p className="font-medium">Event could not be loaded</p>
-          <p>{error.message}</p>
-        </div>
-      </div>
+      <Alert status="danger">
+        <Alert.Indicator />
+        <Alert.Content>
+          <Alert.Title>Event could not be loaded</Alert.Title>
+          <Alert.Description>{error.message}</Alert.Description>
+        </Alert.Content>
+      </Alert>
     );
   }
 
   if (event !== null) {
     return (
-      <div className="flex items-start gap-3 rounded-3xl border bg-primary/10 p-4 text-sm">
-        <CalendarCheckIcon className="mt-0.5" />
-        <div>
-          <p className="font-medium">{event.name}</p>
-          <p className="text-muted-foreground">
-            {formatEventDate(event.startDate)} -{" "}
+      <Alert status="success">
+        <Alert.Indicator>
+          <CalendarCheckIcon className="size-5" />
+        </Alert.Indicator>
+        <Alert.Content>
+          <Alert.Title>{event.name}</Alert.Title>
+          <Alert.Description>
+            {formatEventDate(event.startDate)} to{" "}
             {formatEventDate(event.endDate)}
-          </p>
-        </div>
-      </div>
+          </Alert.Description>
+        </Alert.Content>
+      </Alert>
     );
   }
 
   return (
-    <div className="rounded-3xl border bg-secondary/40 p-4 text-sm text-muted-foreground">
-      Event details will appear after a valid code is found.
-    </div>
+    <p className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted">
+      Event details show here after you enter a valid event code.
+    </p>
   );
 }

@@ -37,12 +37,14 @@ import {
   dashboardEventValidator,
   eventStatusNotificationValidator,
   eventStatusValidator,
-  eventValidator,
+  adminEventValidator,
   frcEventTeamValidator,
   seasonValidator,
   teamSyncDetailsValidator,
   teamSyncResultValidator,
   validateEventFields,
+  validateEventPickSettings,
+  canEditPickSettingsForEvent,
 } from "./lib/events/validators";
 import { getCurrentUser } from "./users";
 import { getTeamsForYearAndCode } from "../src/lib/fetch/frc-events";
@@ -53,7 +55,8 @@ export const list = query({
     activeSeason: v.union(seasonValidator, v.null()),
     globalCategories: v.array(categoryValidator),
     seasonCategories: v.array(categoryValidator),
-    events: v.array(eventValidator),
+    events: v.array(adminEventValidator),
+    approvedPlayerCount: v.optional(v.number()),
   }),
   handler: async (ctx) => {
     const currentUser = await getCurrentUser(ctx);
@@ -70,6 +73,7 @@ export const list = query({
         globalCategories: [],
         seasonCategories: [],
         events: [],
+        approvedPlayerCount: 0,
       };
     }
 
@@ -90,7 +94,24 @@ export const list = query({
       seasonCategories: sortCategoriesByText(
         categories.filter((category) => !category.isGlobal),
       ),
-      events: sortEventsByStartDate(events),
+      events: await Promise.all(
+        sortEventsByStartDate(events).map(async (event) => {
+          const [eventTeams, picks] = await Promise.all([
+            ctx.db
+              .query("eventTeams")
+              .withIndex("byEvent", (q) => q.eq("event", event._id))
+              .collect(),
+            ctx.db
+              .query("picks")
+              .withIndex("byEvent", (q) => q.eq("event", event._id))
+              .collect(),
+          ]);
+          return { ...event, teamCount: eventTeams.length, pickCount: picks.length };
+        }),
+      ),
+      approvedPlayerCount: (await ctx.db.query("users").collect()).filter(
+        (user) => user.isApproved,
+      ).length,
     };
   },
 });
@@ -219,6 +240,51 @@ export const create = mutation({
     await syncEventTeams(ctx, eventId, args.teams);
 
     return eventId;
+  },
+});
+
+export const updatePickSettings = mutation({
+  args: {
+    eventId: v.id("events"),
+    numberOfTeamPicks: v.int64(),
+    numberOfCategoryPicks: v.int64(),
+    categories: v.array(v.id("categories")),
+  },
+  returns: v.null(),
+  async handler(ctx, args) {
+    const currentUser = await getCurrentUser(ctx);
+
+    if (!currentUser?.isAdmin) {
+      throw new Error("Only admins can update events.");
+    }
+
+    const event = await ctx.db.get(args.eventId);
+
+    if (event === null) {
+      throw new Error("Event not found.");
+    }
+
+    if (!canEditPickSettingsForEvent(event.status)) {
+      throw new Error(
+        "Pick settings can only be edited for upcoming events or open submissions.",
+      );
+    }
+
+    validateEventPickSettings({
+      numberOfTeamPicks: args.numberOfTeamPicks,
+      numberOfCategoryPicks: args.numberOfCategoryPicks,
+      categories: args.categories,
+    });
+
+    await assertCategoriesBelongToSeason(ctx, args.categories, event.season);
+
+    await ctx.db.patch(args.eventId, {
+      numberOfTeamPicks: args.numberOfTeamPicks,
+      numberOfCategoryPicks: args.numberOfCategoryPicks,
+      categories: args.categories,
+    });
+
+    return null;
   },
 });
 

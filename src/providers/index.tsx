@@ -9,6 +9,7 @@ import {
   QueryClientProvider,
 } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { Toast } from "@heroui/react";
 import { ReactNode } from "react";
 
 function makeQueryClient() {
@@ -39,8 +40,9 @@ export default function Providers({ children }: { children: ReactNode }) {
       <ThemeProvider>
         <ClerkProvider>
           <ConvexClientProvider>
-            <ReactQueryDevtools />
             {children}
+            <Toast.Provider placement="top" />
+            <ReactQueryDevtools buttonPosition="bottom-left" />
           </ConvexClientProvider>
         </ClerkProvider>
       </ThemeProvider>

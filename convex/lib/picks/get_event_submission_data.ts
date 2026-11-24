@@ -144,7 +144,9 @@ async function getExistingPickForEvent(
     .withIndex("byUserAndEvent", (q) =>
       q.eq("user", userId).eq("event", eventId),
     )
-    .unique();
+    .order("desc")
+    .first();
+  // .unique();
 
   if (pick === null) {
     return null;

@@ -1,18 +1,17 @@
 "use client";
 
 import { useMultiStepModal } from "@/components/multi-step-modal/use-multi-step-modal";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Item,
-  ItemContent,
-  ItemDescription,
-  ItemGroup,
-  ItemTitle,
-} from "@/components/ui/item";
+import { Button, Checkbox, Description } from "@heroui/react";
 import type { Doc } from "../../../../../convex/_generated/dataModel";
 
-import type { CreateEventModalData } from "@/components/events/constants";
+import type {
+  CreateEventModalData,
+  EditEventModalData,
+} from "@/components/events/constants";
+
+type EventCategorySelectionModalData =
+  | CreateEventModalData
+  | EditEventModalData;
 
 export default function EventCategoryGroup({
   title,
@@ -21,27 +20,41 @@ export default function EventCategoryGroup({
   title: string;
   categories: Doc<"categories">[];
 }) {
-  const { data, updateData } = useMultiStepModal<CreateEventModalData>();
+  const { data, updateData } =
+    useMultiStepModal<EventCategorySelectionModalData>();
   const selectedCategoryIds = new Set(data.selectedCategoryIds);
+  const selectedInGroup = categories.filter((category) =>
+    selectedCategoryIds.has(category._id),
+  ).length;
   const allCategoriesSelected =
-    categories.length > 0 &&
-    categories.every((category) => selectedCategoryIds.has(category._id));
+    categories.length > 0 && selectedInGroup === categories.length;
+
+  function setCategorySelected(categoryId: Doc<"categories">["_id"], selected: boolean) {
+    const nextCategoryIds = new Set(data.selectedCategoryIds);
+
+    if (selected) {
+      nextCategoryIds.add(categoryId);
+    } else {
+      nextCategoryIds.delete(categoryId);
+    }
+
+    updateData({ selectedCategoryIds: Array.from(nextCategoryIds) });
+  }
 
   return (
-    <section className="rounded-4xl border bg-background/60 p-4">
-      <div className="mb-4 flex items-center justify-between gap-3">
+    <section className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h3 className="font-heading font-medium">{title}</h3>
-          <p className="text-sm text-muted-foreground">
-            {categories.length} available
+          <h3 className="font-heading font-semibold">{title}</h3>
+          <p className="text-sm text-muted tabular-nums">
+            {selectedInGroup} of {categories.length} selected
           </p>
         </div>
         <Button
-          type="button"
-          size="xs"
+          size="sm"
           variant="secondary"
-          disabled={categories.length === 0}
-          onClick={() => {
+          isDisabled={categories.length === 0}
+          onPress={() => {
             const nextCategoryIds = new Set(data.selectedCategoryIds);
 
             for (const category of categories) {
@@ -55,54 +68,43 @@ export default function EventCategoryGroup({
             updateData({ selectedCategoryIds: Array.from(nextCategoryIds) });
           }}
         >
-          {allCategoriesSelected ? "Deselect all" : "Select all"}
+          {allCategoriesSelected ? "Clear all" : "Select all"}
         </Button>
       </div>
       {categories.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No categories yet.</p>
+        <p className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted">
+          No categories yet.
+        </p>
       ) : (
-        <ItemGroup className="max-h-80 overflow-y-auto">
-          {categories.map((category) => {
-            const checked = selectedCategoryIds.has(category._id);
-
-            return (
-              <Item
-                key={category._id}
-                asChild
-                variant="muted"
-                data-selected={checked}
-                className="cursor-pointer items-start rounded-3xl border p-4 data-[selected=true]:border-primary/40 data-[selected=true]:bg-primary/20"
+        <ul className="flex flex-col gap-2">
+          {categories.map((category) => (
+            <li key={category._id}>
+              <Checkbox
+                id={`event-category-${category._id}`}
+                variant="secondary"
+                className="w-full"
+                isSelected={selectedCategoryIds.has(category._id)}
+                onChange={(selected) =>
+                  setCategorySelected(category._id, selected)
+                }
               >
-                <label htmlFor={`create-event-category-${category._id}`}>
-                  <Checkbox
-                    id={`create-event-category-${category._id}`}
-                    className="mt-0.5"
-                    checked={checked}
-                    onCheckedChange={(nextChecked) => {
-                      const nextCategoryIds = new Set(data.selectedCategoryIds);
-
-                      if (nextChecked === true) {
-                        nextCategoryIds.add(category._id);
-                      } else {
-                        nextCategoryIds.delete(category._id);
-                      }
-
-                      updateData({
-                        selectedCategoryIds: Array.from(nextCategoryIds),
-                      });
-                    }}
-                  />
-                  <ItemContent>
-                    <ItemTitle>{category.text}</ItemTitle>
-                    <ItemDescription>
-                      {category.scoringDescription}
-                    </ItemDescription>
-                  </ItemContent>
-                </label>
-              </Item>
-            );
-          })}
-        </ItemGroup>
+                <Checkbox.Content className="flex min-h-14 w-full cursor-pointer items-start gap-3 rounded-2xl border border-border bg-surface p-3.5 transition-colors data-[selected=true]:border-accent data-[selected=true]:bg-accent-soft">
+                  <Checkbox.Control className="mt-0.5 shrink-0">
+                    <Checkbox.Indicator />
+                  </Checkbox.Control>
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="text-sm font-medium">{category.text}</span>
+                    {category.scoringDescription ? (
+                      <Description className="text-xs">
+                        {category.scoringDescription}
+                      </Description>
+                    ) : null}
+                  </span>
+                </Checkbox.Content>
+              </Checkbox>
+            </li>
+          ))}
+        </ul>
       )}
     </section>
   );

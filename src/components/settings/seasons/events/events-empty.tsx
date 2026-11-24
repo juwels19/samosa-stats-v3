@@ -1,10 +1,4 @@
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
+import EmptyState from "@/components/common/empty-state";
 import { CalendarPlusIcon } from "lucide-react";
 
 export default function EventsEmptyState({
@@ -13,20 +7,14 @@ export default function EventsEmptyState({
   hasActiveSeason: boolean;
 }) {
   return (
-    <Empty className="border">
-      <EmptyHeader>
-        <EmptyMedia variant="icon">
-          <CalendarPlusIcon />
-        </EmptyMedia>
-        <EmptyTitle>
-          {hasActiveSeason ? "No events yet" : "No active season"}
-        </EmptyTitle>
-        <EmptyDescription>
-          {hasActiveSeason
-            ? "Add an event to start collecting picks for this season."
-            : "Choose an active season before adding events."}
-        </EmptyDescription>
-      </EmptyHeader>
-    </Empty>
+    <EmptyState
+      icon={<CalendarPlusIcon />}
+      title={hasActiveSeason ? "No events yet" : "No active season"}
+      description={
+        hasActiveSeason
+          ? "Add an event to start collecting picks for this season."
+          : "Choose an active season before you add events."
+      }
+    />
   );
 }

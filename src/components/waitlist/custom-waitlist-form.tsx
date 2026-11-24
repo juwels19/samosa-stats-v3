@@ -1,20 +1,15 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import {
+  Button,
   Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Field,
-  FieldDescription,
+  Description,
   FieldError,
-  FieldLabel,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+  Input,
+  Label,
+  Spinner,
+  TextField,
+} from "@heroui/react";
 import WaitlistAccessCheck from "@/components/waitlist/waitlist-access-check";
 import { useWaitlistForm } from "@/components/waitlist/use-waitlist-form";
 
@@ -29,61 +24,68 @@ export default function CustomWaitlistForm() {
   } = useWaitlistForm();
 
   return (
-    <Card className="w-full max-w-xl">
-      <CardHeader className="items-center justify-items-center text-center">
-        <CardTitle className="text-2xl">Join the waitlist</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col items-center gap-6 text-center">
-        <p className="max-w-md text-sm/relaxed text-muted-foreground">
-          Drop your email and we&apos;ll review your request. Approved users
-          will receive an invite that unlocks sign in.
-        </p>
+    <Card className="w-full max-w-xl gap-6">
+      <Card.Header className="items-center gap-2 text-center">
+        <Card.Title className="font-heading text-2xl font-semibold">
+          Join the waitlist
+        </Card.Title>
+        <Card.Description className="max-w-md text-sm/relaxed">
+          Enter your email and we&apos;ll review your request. Approved users
+          get an invite that unlocks sign in.
+        </Card.Description>
+      </Card.Header>
 
+      <Card.Content className="flex flex-col items-center">
         <form
           className="flex w-full max-w-sm flex-col gap-4"
           onSubmit={handleSubmit}
         >
-          <Field data-invalid={Boolean(emailError)}>
-            <FieldLabel htmlFor="waitlist-email">Email address</FieldLabel>
+          <TextField
+            fullWidth
+            name="emailAddress"
+            type="email"
+            value={emailAddress}
+            onChange={setEmailAddress}
+            isRequired
+            isDisabled={isSubmitting}
+            isInvalid={Boolean(emailError)}
+            validationBehavior="aria"
+          >
+            <Label>Email address</Label>
             <Input
-              id="waitlist-email"
-              name="emailAddress"
-              type="email"
-              value={emailAddress}
               placeholder="you@example.com"
               autoComplete="email"
-              required
-              disabled={isSubmitting}
-              aria-invalid={Boolean(emailError)}
-              aria-describedby={
-                emailError
-                  ? "waitlist-email-error"
-                  : "waitlist-email-description"
-              }
-              onChange={(event) => setEmailAddress(event.target.value)}
-              className="h-10"
+              inputMode="email"
             />
-            <FieldDescription id="waitlist-email-description">
+            <Description>
               Use the same email you&apos;ll use to sign in after approval.
-            </FieldDescription>
-            {emailError ? (
-              <FieldError id="waitlist-email-error">{emailError}</FieldError>
-            ) : null}
-          </Field>
+            </Description>
+            <FieldError>{emailError}</FieldError>
+          </TextField>
 
-          {formError ? <FieldError>{formError}</FieldError> : null}
+          {formError ? (
+            <p role="alert" className="text-sm text-danger">
+              {formError}
+            </p>
+          ) : null}
 
-          <Button type="submit" size="lg" disabled={isSubmitting}>
-            {isSubmitting ? "Submitting..." : "Request access"}
+          <Button type="submit" size="lg" fullWidth isPending={isSubmitting}>
+            {({ isPending }) => (
+              <>
+                {isPending ? <Spinner color="current" size="sm" /> : null}
+                {isPending ? "Submitting" : "Request access"}
+              </>
+            )}
           </Button>
         </form>
-      </CardContent>
-      <CardFooter className="flex-col gap-3 border-t text-center">
-        <p className="text-sm text-muted-foreground">
+      </Card.Content>
+
+      <Card.Footer className="flex flex-col items-center gap-3 border-t border-separator pt-6 text-center">
+        <p className="text-sm text-muted">
           Already invited? Check your access below.
         </p>
         <WaitlistAccessCheck />
-      </CardFooter>
+      </Card.Footer>
     </Card>
   );
 }

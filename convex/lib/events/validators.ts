@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { Id } from "../../_generated/dataModel";
+import { Doc, Id } from "../../_generated/dataModel";
 
 export const seasonValidator = v.object({
   _id: v.id("seasons"),
@@ -39,6 +39,13 @@ export const eventValidator = v.object({
   numberOfCategoryPicks: v.int64(),
   categories: v.array(v.id("categories")),
   status: eventStatusValidator,
+});
+
+/** Event plus the counts the admin events table shows. */
+export const adminEventValidator = v.object({
+  ...eventValidator.fields,
+  teamCount: v.optional(v.number()),
+  pickCount: v.optional(v.number()),
 });
 
 export const eventStatusNotificationValidator = v.object({
@@ -110,6 +117,34 @@ export function validateEventFields({
   if (categories.length === 0) {
     throw new Error("Select at least one category.");
   }
+}
+
+export function validateEventPickSettings({
+  numberOfTeamPicks,
+  numberOfCategoryPicks,
+  categories,
+}: {
+  numberOfTeamPicks: bigint;
+  numberOfCategoryPicks: bigint;
+  categories: Id<"categories">[];
+}) {
+  if (numberOfTeamPicks <= BigInt(0)) {
+    throw new Error("Number of team picks must be greater than zero.");
+  }
+
+  if (numberOfCategoryPicks <= BigInt(0)) {
+    throw new Error("Number of category picks must be greater than zero.");
+  }
+
+  if (categories.length === 0) {
+    throw new Error("Select at least one category.");
+  }
+}
+
+export function canEditPickSettingsForEvent(
+  status: Doc<"events">["status"],
+) {
+  return status === "UPCOMING" || status === "SUBMISSIONS_OPEN";
 }
 
 export const dashboardEventValidator = v.object({

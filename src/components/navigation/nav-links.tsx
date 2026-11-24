@@ -1,56 +1,36 @@
 "use client";
 
-import {
-  NavigationMenu,
-  NavigationMenuList,
-  NavigationMenuLink,
-  navigationMenuTriggerStyle,
-} from "@/components/ui/navigation-menu";
-import { useConvexAuth, useQuery } from "convex/react";
 import Link from "next/link";
-import { api } from "../../../convex/_generated/api";
 import { usePathname } from "next/navigation";
-import {
-  adminMenuItems,
-  generalMenuItems,
-} from "@/components/navigation/constants";
+import { cn } from "@/lib/utils";
+import { isNavItemActive } from "./constants";
+import { useNavItems } from "./use-nav-items";
 
 export default function NavLinks() {
   const pathname = usePathname();
-
-  const { isAuthenticated } = useConvexAuth();
-
-  const currentUser = useQuery(api.users.current);
-  const isAdmin = currentUser?.isAdmin || false;
+  const { items } = useNavItems();
 
   return (
-    <NavigationMenu className="hidden md:block">
-      <NavigationMenuList>
-        {generalMenuItems.map((item) => (
-          <NavigationMenuLink
-            key={`general-menu-item-${item.label}`}
-            className={navigationMenuTriggerStyle()}
-            active={pathname === item.href}
-            asChild
-          >
-            <Link href={item.href}>{item.label}</Link>
-          </NavigationMenuLink>
-        ))}
-        {isAuthenticated &&
-          isAdmin &&
-          adminMenuItems.map((item) => (
-            <NavigationMenuLink
-              key={`admin-menu-item-${item.label}`}
-              className={navigationMenuTriggerStyle()}
-              active={new RegExp(`^${item.href}(?:\\/[^/]+)*\\/?$`).test(
-                pathname
-              )}
-              asChild
-            >
-              <Link href={item.href}>{item.label}</Link>
-            </NavigationMenuLink>
-          ))}
-      </NavigationMenuList>
-    </NavigationMenu>
+    <nav aria-label="Main" className="hidden md:block">
+      <ul className="flex items-center gap-1">
+        {items.map((item) => {
+          const active = isNavItemActive(pathname, item.href);
+          return (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "rounded-full px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-default hover:text-foreground",
+                  active && "bg-default text-foreground",
+                )}
+              >
+                {item.label}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
   );
 }

@@ -1,14 +1,16 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Instrument_Sans } from "next/font/google";
 import Providers from "@/providers";
 import TopNav from "@/components/navigation/top-nav";
-import { Toaster } from "@/components/ui/sonner";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-
-import "./globals.css";
+import BottomNav from "@/components/navigation/bottom-nav";
 import { cn } from "@/lib/utils";
 
-const instrumentSansHeading = Instrument_Sans({subsets:['latin'],variable:'--font-heading'});
+import "./globals.css";
+
+const instrumentSansHeading = Instrument_Sans({
+  subsets: ["latin"],
+  variable: "--font-heading",
+});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,6 +28,21 @@ export const metadata: Metadata = {
     default: "v3 Samosa Stats",
   },
   description: "Degenerate FRC fantasy",
+  appleWebApp: {
+    capable: true,
+    title: "Samosa Stats",
+    statusBarStyle: "default",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f7f7" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0b0d" },
+  ],
 };
 
 export default function RootLayout({
@@ -34,17 +51,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={cn(instrumentSansHeading.variable)}>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased h-dvh`}
-      >
+    <html
+      lang="en-CA"
+      suppressHydrationWarning
+      className={cn(
+        instrumentSansHeading.variable,
+        geistSans.variable,
+        geistMono.variable,
+      )}
+    >
+      <body className="min-h-dvh antialiased">
         <Providers>
           <TopNav />
-          <main className="font-geistSans max-w-screen-2xl mx-auto h-[calc(100dvh_-_var(--nav-height))]">
+          <main className="mx-auto w-full max-w-screen-2xl pb-(--bottom-nav-height)">
             {children}
           </main>
-          <Toaster richColors position="top-right" />
-          <ReactQueryDevtools />
+          <BottomNav />
         </Providers>
       </body>
     </html>

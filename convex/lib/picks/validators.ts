@@ -31,6 +31,16 @@ export const existingPickValidator = v.object({
   selectedCategoryIds: v.array(v.id("categories")),
 });
 
+export const eventPickValidator = v.object({
+  _id: v.id("picks"),
+  _creationTime: v.number(),
+  displayName: v.optional(v.string()),
+  isRandom: v.boolean(),
+  user: v.id("users"),
+  teams: v.array(pickTeamValidator),
+  categories: v.array(categoryValidator),
+});
+
 export const pickSubmissionDataValidator = v.union(
   v.object({
     event: pickSubmissionEventValidator,

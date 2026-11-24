@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { Chip } from "@heroui/react";
 import type {
   PickSubmissionCategory,
   PickSubmissionTeam,
@@ -16,41 +16,55 @@ export default function PicksSummaryContent({
 }) {
   const sortedTeams = sortSelectedTeams(selectedTeams);
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-medium">Display name</h3>
-        <p className="text-sm text-muted-foreground">
+    <dl className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1.5">
+        <dt className="text-sm font-medium">Display name</dt>
+        <dd className="text-sm text-muted">
           {displayName.trim() || "No display name set"}
-        </p>
+        </dd>
       </div>
-      <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-medium">Teams</h3>
-        {selectedTeams.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No teams selected.</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {sortedTeams.map((team) => (
-              <Badge key={team._id} variant="secondary">
-                {team.number.toString()} - {team.name}
-              </Badge>
-            ))}
-          </div>
-        )}
+      <div className="flex flex-col gap-1.5">
+        <dt className="text-sm font-medium">Teams</dt>
+        <dd>
+          {selectedTeams.length === 0 ? (
+            <p className="text-sm text-muted">No teams selected.</p>
+          ) : (
+            <ul className="flex flex-wrap gap-1.5">
+              {sortedTeams.map((team) => (
+                <li key={team._id}>
+                  <Chip size="md">
+                    <span className="font-semibold tabular-nums">
+                      {team.number.toString()}
+                    </span>
+                    <span className="max-w-40 truncate text-muted">
+                      {team.name}
+                    </span>
+                  </Chip>
+                </li>
+              ))}
+            </ul>
+          )}
+        </dd>
       </div>
-      <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-medium">Categories</h3>
-        {selectedCategories.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No categories selected.</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {selectedCategories.map((category) => (
-              <Badge key={category._id} variant="secondary">
-                {category.text}
-              </Badge>
-            ))}
-          </div>
-        )}
+      <div className="flex flex-col gap-1.5">
+        <dt className="text-sm font-medium">Categories</dt>
+        <dd>
+          {selectedCategories.length === 0 ? (
+            <p className="text-sm text-muted">No categories selected.</p>
+          ) : (
+            <ul className="flex flex-col gap-1.5">
+              {selectedCategories.map((category) => (
+                <li
+                  key={category._id}
+                  className="rounded-xl bg-default px-3 py-2 text-sm"
+                >
+                  {category.text}
+                </li>
+              ))}
+            </ul>
+          )}
+        </dd>
       </div>
-    </div>
+    </dl>
   );
 }

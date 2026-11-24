@@ -13,6 +13,22 @@ export type FrcEvents_Season = {
   }[];
 };
 
+export type FrcEvents_Alliance = {
+  number: number;
+  captain: number;
+  round1: number;
+  round2: number;
+  round3: number | null;
+  backup: number | null;
+  backupReplaced: number | null;
+  name: string
+}
+
+export type FrcEvents_AllianceSelection = {
+  "Alliances": FrcEvents_Alliance[];
+  count: number;
+}
+
 type FrcEventsEventResponse = {
   code: string;
   name: string;
@@ -59,10 +75,10 @@ const fetchFrcEvents = async (
     ...(cache === "no-store"
       ? {}
       : {
-          next: {
-            revalidate: 60 * 10, // 10 minutes
-          },
-        }),
+        next: {
+          revalidate: 60 * 10, // 10 minutes
+        },
+      }),
   });
 
 function getFrcEventsAuthorizationCredential() {
@@ -229,6 +245,50 @@ export async function getTeamsForYearAndCode({
   return getTeamsFromResponse(data);
 }
 
+export async function getEventAllianceSelectionForYearAndCode({
+  year,
+  eventCode,
+}: {
+  year: number | string;
+  eventCode: string;
+}): Promise<FrcEvents_AllianceSelection> {
+  const normalizedYear = String(year).trim();
+  const normalizedEventCode = eventCode.trim().toUpperCase();
+
+  if (!/^\d{4}$/.test(normalizedYear)) {
+    throw new Error("Select an active season before loading alliance selection.");
+  }
+
+  if (!/^[A-Z0-9]+$/.test(normalizedEventCode)) {
+    throw new Error("Enter a valid event code.");
+  }
+
+  const result = await fetchFrcEvents(
+    `/${normalizedYear}/alliances/${encodeURIComponent(normalizedEventCode)}`,
+    "GET",
+    "no-store",
+  );
+  const responseBody = await result.text();
+
+  if (result.status === 404) {
+    throw new Error(
+      `No FRC alliance selection found for code ${normalizedEventCode} in ${normalizedYear}.`,
+    );
+  }
+
+  if (!result.ok) {
+    throw new Error(`Unable to fetch FRC alliance selection for ${normalizedEventCode}.`);
+  }
+
+  if (responseBody.length === 0) {
+    throw new Error(`No FRC alliance selection data found for ${normalizedEventCode}.`);
+  }
+
+  const data = JSON.parse(responseBody) as FrcEvents_AllianceSelection;
+
+  return data;
+}
+
 function getFirstEventFromResponse(data: unknown): FrcEventsEventResponse | null {
   if (!isRecord(data)) {
     return null;
@@ -329,4 +389,72 @@ function getNumberProperty(record: Record<string, unknown>, key: string) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+export type FrcSeasonEvent = {
+  eventCode: string;
+  name: string;
+  type: string;
+  districtCode: string | null;
+  city: string;
+  startDate: string;
+  endDate: string;
+  weekNumber: number | null;
+};
+
+/** All events for a season, or only one district's events (for example ONT). */
+export async function getEventsForYear({
+  year,
+  districtCode,
+}: {
+  year: number | string;
+  districtCode?: string | null;
+}): Promise<FrcSeasonEvent[]> {
+  const normalizedYear = String(year).trim();
+  if (!/^\d{4}$/.test(normalizedYear)) {
+    throw new Error("Select an active season before loading events.");
+  }
+
+  const district = districtCode?.trim().toUpperCase();
+  if (district && !/^[A-Z]{2,4}$/.test(district)) {
+    throw new Error("Enter a valid district code.");
+  }
+
+  const query = district ? `?districtCode=${encodeURIComponent(district)}` : "";
+  const result = await fetchFrcEvents(`/${normalizedYear}/events${query}`, "GET");
+
+  if (!result.ok) {
+    throw new Error(`Unable to fetch FRC events for ${normalizedYear}.`);
+  }
+
+  let data: unknown;
+  try {
+    data = await result.json();
+  } catch {
+    throw new Error(`Invalid FRC event data returned for ${normalizedYear}.`);
+  }
+
+  const events = isRecord(data) ? (data.Events ?? data.events) : null;
+  if (!Array.isArray(events)) return [];
+
+  return events
+    .filter(isRecord)
+    .filter(
+      (event) =>
+        typeof event.code === "string" &&
+        typeof event.name === "string" &&
+        typeof event.dateStart === "string" &&
+        typeof event.dateEnd === "string",
+    )
+    .map((event) => ({
+      eventCode: String(event.code),
+      name: String(event.name),
+      type: typeof event.type === "string" ? event.type : "Unknown",
+      districtCode: typeof event.districtCode === "string" ? event.districtCode : null,
+      city: [event.city, event.stateprov].filter((part) => typeof part === "string" && part).join(", "),
+      startDate: String(event.dateStart),
+      endDate: String(event.dateEnd),
+      weekNumber: typeof event.weekNumber === "number" ? event.weekNumber : null,
+    }))
+    .sort((a, b) => a.startDate.localeCompare(b.startDate) || a.eventCode.localeCompare(b.eventCode));
 }

@@ -1,21 +1,10 @@
-import { CalendarIcon, ListCollapseIcon, LucideIcon, SunSnowIcon } from "lucide-react";
-
-export interface SettingsSidebarItem {
+export interface SettingsTab {
   label: string;
-  items: {
-    label: string;
-    icon: LucideIcon;
-    href: string;
-  }[]
+  href: string;
 }
 
-export const settingsSidebarItems: SettingsSidebarItem[] = [
-  {
-    label: "Season Settings",
-    items: [
-      { icon: SunSnowIcon, label: "Active Season", href: '/settings/seasons/active-season' },
-      { icon: CalendarIcon, label: "Events", href: "/settings/seasons/events" },
-      { icon: ListCollapseIcon, label: "Categories", href: "/settings/seasons/categories" }
-    ]
-  }
-] as const;
+export const settingsTabs: SettingsTab[] = [
+  { label: "Season", href: "/settings/seasons/active-season" },
+  { label: "Events", href: "/settings/seasons/events" },
+  { label: "Categories", href: "/settings/seasons/categories" },
+];

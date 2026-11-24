@@ -1,10 +1,9 @@
 "use client";
 
 import { useMultiStepModal } from "@/components/multi-step-modal/use-multi-step-modal";
-import { Button } from "@/components/ui/button";
+import { Button, toast } from "@heroui/react";
 import { useMutation } from "convex/react";
 import { useState } from "react";
-import { toast } from "sonner";
 
 import { api } from "../../../../../convex/_generated/api";
 import {
@@ -86,7 +85,7 @@ export default function CreateEventFooter({
       });
       onOpenChange(false);
     } catch (error) {
-      toast.error("Event not saved", {
+      toast.danger("Event not saved", {
         description:
           error instanceof Error ? error.message : "Please try again.",
       });
@@ -99,28 +98,28 @@ export default function CreateEventFooter({
     <>
       {isFirstStep ? (
         <Button
-          type="button"
+          size="lg"
           variant="secondary"
-          onClick={() => onOpenChange(false)}
+          onPress={() => onOpenChange(false)}
         >
           Cancel
         </Button>
       ) : (
         <Button
-          type="button"
+          size="lg"
           variant="secondary"
-          disabled={isSaving}
-          onClick={goToPreviousStep}
+          isDisabled={isSaving}
+          onPress={goToPreviousStep}
         >
           Back
         </Button>
       )}
       {isLastStep ? (
-        <Button type="button" disabled={isSaving} onClick={handleSave}>
-          {isSaving ? "Saving..." : "Save event"}
+        <Button size="lg" isPending={isSaving} onPress={handleSave}>
+          {isSaving ? "Saving" : "Save event"}
         </Button>
       ) : (
-        <Button type="button" disabled={isSaving} onClick={handleContinue}>
+        <Button size="lg" isDisabled={isSaving} onPress={handleContinue}>
           Continue
         </Button>
       )}

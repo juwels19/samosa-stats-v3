@@ -80,6 +80,7 @@ export default defineSchema({
     isRandom: v.boolean(),
     categories: v.array(v.id("categories")),
   })
+    .index("byEvent", ["event"])
     .index("byUserAndEvent", ["user", "event"]),
   pickTeams: defineTable({
     pick: v.id("picks"),

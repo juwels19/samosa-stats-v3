@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { ExistingPickSubmission } from "./pick-submission-types";
@@ -14,17 +14,28 @@ export function usePicksSelection({
   numberOfTeamPicks: number;
   numberOfCategoryPicks: number;
 }) {
-  const [selectedTeamIds, setSelectedTeamIds] = useState<Id<"teams">[]>([]);
+  const [selectedTeamIds, setSelectedTeamIds] = useState<Id<"teams">[]>(
+    existingPick?.selectedTeamIds ?? [],
+  );
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<
     Id<"categories">[]
-  >([]);
-  const [displayName, setDisplayName] = useState("");
+  >(existingPick?.selectedCategoryIds ?? []);
+  const [displayName, setDisplayName] = useState(
+    existingPick?.displayName ?? "",
+  );
 
-  useEffect(() => {
+  // Reset only when a different saved pick arrives. Convex sends a new object
+  // on every live update, so comparing by reference would wipe unsaved edits.
+  const savedPickKey = existingPick
+    ? `${existingPick._id}:${existingPick.selectedTeamIds.join()}:${existingPick.selectedCategoryIds.join()}:${existingPick.displayName ?? ""}`
+    : null;
+  const [lastSavedPickKey, setLastSavedPickKey] = useState(savedPickKey);
+  if (savedPickKey !== lastSavedPickKey) {
+    setLastSavedPickKey(savedPickKey);
     setSelectedTeamIds(existingPick?.selectedTeamIds ?? []);
     setSelectedCategoryIds(existingPick?.selectedCategoryIds ?? []);
     setDisplayName(existingPick?.displayName ?? "");
-  }, [existingPick]);
+  }
 
   function toggleTeam(teamId: Id<"teams">) {
     setSelectedTeamIds((currentTeamIds) =>

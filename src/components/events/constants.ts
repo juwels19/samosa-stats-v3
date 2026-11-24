@@ -9,14 +9,14 @@ export const EVENT_STATUS_LABELS: Record<Doc<"events">["status"], string> = {
   COMPLETE: "Complete",
 };
 
-export const EVENT_STATUS_BADGE_VARIANTS: Record<
+export const EVENT_STATUS_CHIP_COLORS: Record<
   Doc<"events">["status"],
-  "default" | "secondary" | "destructive" | "success"
+  "default" | "accent" | "success" | "warning" | "danger"
 > = {
-  UPCOMING: "secondary",
-  SUBMISSIONS_OPEN: "success",
-  SUBMISSIONS_CLOSED: "destructive",
-  ONGOING: "default",
+  UPCOMING: "default",
+  SUBMISSIONS_OPEN: "accent",
+  SUBMISSIONS_CLOSED: "danger",
+  ONGOING: "warning",
   COMPLETE: "success",
 };
 
@@ -50,6 +50,15 @@ export const createEventDetailsSchema = z.object({
     .regex(/^[1-9]\d*$/, "Enter a positive whole number."),
 });
 
+export const editEventPickSettingsSchema = z.object({
+  numberOfTeamPicks: z
+    .string()
+    .regex(/^[1-9]\d*$/, "Enter a positive whole number."),
+  numberOfCategoryPicks: z
+    .string()
+    .regex(/^[1-9]\d*$/, "Enter a positive whole number."),
+});
+
 export type CreateEventModalData = z.infer<typeof createEventDetailsSchema> & {
   loadedEvent: LoadedFrcEvent | null;
   selectedCategoryIds: Id<"categories">[];
@@ -57,4 +66,11 @@ export type CreateEventModalData = z.infer<typeof createEventDetailsSchema> & {
   hasSubmittedCategories: boolean;
 };
 
+export type EditEventModalData = z.infer<typeof editEventPickSettingsSchema> & {
+  selectedCategoryIds: Id<"categories">[];
+  hasSubmittedPickSettings: boolean;
+  hasSubmittedCategories: boolean;
+};
+
 export const EVENT_MODAL_STEP_COUNT = 3;
+export const EDIT_EVENT_MODAL_STEP_COUNT = 3;

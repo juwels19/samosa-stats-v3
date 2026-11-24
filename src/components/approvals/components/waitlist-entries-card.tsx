@@ -1,13 +1,6 @@
 import ApprovalsEmptyState from "@/components/approvals/components/approvals-empty-state";
-import WaitlistTable from "@/components/approvals/components/waitlist-table";
+import WaitlistList from "@/components/approvals/components/waitlist-list";
 import type { WaitlistEntryAction } from "@/components/approvals/types";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import type { SerializedWaitlistEntry } from "@/lib/clerk/types";
 
 export default function WaitlistEntriesCard({
@@ -20,26 +13,26 @@ export default function WaitlistEntriesCard({
   revokeAction: WaitlistEntryAction;
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Waitlist Entries</CardTitle>
-        <CardDescription>
+    <section aria-labelledby="waitlist-heading" className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h2 id="waitlist-heading" className="font-heading text-lg font-semibold">
+          Waitlist entries
+        </h2>
+        <p className="text-sm text-muted">
           {entries.length === 1
             ? "1 current waitlist entry"
             : `${entries.length} current waitlist entries`}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {entries.length === 0 ? (
-          <ApprovalsEmptyState />
-        ) : (
-          <WaitlistTable
-            entries={entries}
-            inviteAction={inviteAction}
-            revokeAction={revokeAction}
-          />
-        )}
-      </CardContent>
-    </Card>
+        </p>
+      </div>
+      {entries.length === 0 ? (
+        <ApprovalsEmptyState />
+      ) : (
+        <WaitlistList
+          entries={entries}
+          inviteAction={inviteAction}
+          revokeAction={revokeAction}
+        />
+      )}
+    </section>
   );
 }

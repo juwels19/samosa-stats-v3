@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import { Description, Input, Label, TextField } from "@heroui/react";
 import { MAX_PICK_DISPLAY_NAME_LENGTH } from "./constants";
 
 export default function DisplayNameField({
@@ -19,24 +13,18 @@ export default function DisplayNameField({
   onDisplayNameChange: (displayName: string) => void;
 }) {
   return (
-    <FieldGroup>
-      <Field>
-        <FieldLabel htmlFor="pick-display-name">
-          Display name (optional)
-        </FieldLabel>
-        <Input
-          id="pick-display-name"
-          value={displayName}
-          maxLength={MAX_PICK_DISPLAY_NAME_LENGTH}
-          placeholder="Optional name for your picks"
-          disabled={disabled}
-          onChange={(event) => onDisplayNameChange(event.target.value)}
-        />
-        <FieldDescription>
-          {MAX_PICK_DISPLAY_NAME_LENGTH - displayName.length} characters
-          remaining.
-        </FieldDescription>
-      </Field>
-    </FieldGroup>
+    <TextField
+      fullWidth
+      value={displayName}
+      maxLength={MAX_PICK_DISPLAY_NAME_LENGTH}
+      isDisabled={disabled}
+      onChange={onDisplayNameChange}
+    >
+      <Label>Display name (optional)</Label>
+      <Input placeholder="Optional name for your picks" autoComplete="off" />
+      <Description>
+        {MAX_PICK_DISPLAY_NAME_LENGTH - displayName.length} characters left
+      </Description>
+    </TextField>
   );
 }

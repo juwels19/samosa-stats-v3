@@ -1,12 +1,30 @@
 import { ROUTES } from "@/lib/routes";
+import {
+  LayoutDashboardIcon,
+  type LucideIcon,
+  SettingsIcon,
+  TrophyIcon,
+  UserCheckIcon,
+  ClipboardListIcon,
+} from "lucide-react";
 
-export const generalMenuItems = [
-  { label: "Dashboard", href: ROUTES.DASHBOARD },
-  { label: "Leaderboard", href: ROUTES.LEADERBOARD },
-] as const;
+export type NavItem = {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+};
 
-export const adminMenuItems: { label: string, href: string }[] = [
-  { label: "Approvals", href: ROUTES.APPROVALS },
-  { label: "Scores", href: ROUTES.SCORES },
-  { label: "Settings", href: ROUTES.SETTINGS },
-] as const;
+export const generalMenuItems: NavItem[] = [
+  { label: "Dashboard", href: ROUTES.DASHBOARD, icon: LayoutDashboardIcon },
+  { label: "Leaderboard", href: ROUTES.LEADERBOARD, icon: TrophyIcon },
+];
+
+export const adminMenuItems: NavItem[] = [
+  { label: "Approvals", href: ROUTES.APPROVALS, icon: UserCheckIcon },
+  { label: "Scores", href: ROUTES.SCORES, icon: ClipboardListIcon },
+  { label: "Settings", href: ROUTES.SETTINGS, icon: SettingsIcon },
+];
+
+export function isNavItemActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}

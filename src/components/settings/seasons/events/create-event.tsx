@@ -1,8 +1,7 @@
 "use client";
 
 import MultiStepModalProvider from "@/components/multi-step-modal/multi-step-modal-provider";
-import { Button } from "@/components/ui/button";
-import { AlertDialog, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Button } from "@heroui/react";
 import { PlusIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -49,20 +48,22 @@ export default function CreateEvent({
       initialData={initialData}
       totalSteps={EVENT_MODAL_STEP_COUNT}
     >
-      <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogTrigger asChild>
-          <Button disabled={activeSeason === null}>
-            Add event
-            <PlusIcon data-icon="inline-end" />
-          </Button>
-        </AlertDialogTrigger>
-        <CreateEventModalContent
-          activeSeason={activeSeason}
-          globalCategories={globalCategories}
-          seasonCategories={seasonCategories}
-          onOpenChange={setOpen}
-        />
-      </AlertDialog>
+      <Button
+        size="lg"
+        className="w-full sm:w-auto"
+        isDisabled={activeSeason === null}
+        onPress={() => setOpen(true)}
+      >
+        <PlusIcon className="size-4" />
+        New event
+      </Button>
+      <CreateEventModalContent
+        activeSeason={activeSeason}
+        globalCategories={globalCategories}
+        seasonCategories={seasonCategories}
+        isOpen={open}
+        onOpenChange={setOpen}
+      />
     </MultiStepModalProvider>
   );
 }

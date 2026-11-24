@@ -1,14 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Button, Modal, Spinner } from "@heroui/react";
 import type {
   PickSubmissionCategory,
   PickSubmissionTeam,
@@ -38,38 +30,52 @@ export default function PicksConfirmationDialog({
   onConfirm: () => void | Promise<void>;
 }) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Confirm your picks</DialogTitle>
-          <DialogDescription>
-            Review your selections before submitting.
-          </DialogDescription>
-        </DialogHeader>
-        {isRandomPick ? <PicksRandomSubmitBanner /> : null}
-        <PicksSummaryContent
-          selectedTeams={selectedTeams}
-          selectedCategories={selectedCategories}
-          displayName={displayName}
-        />
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isSubmitting}
-            onClick={() => onOpenChange(false)}
-          >
-            Back
-          </Button>
-          <Button
-            type="button"
-            disabled={isSubmitting}
-            onClick={() => void onConfirm()}
-          >
-            {isSubmitting ? "Submitting..." : submitLabel}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <Modal.Backdrop
+      isOpen={open}
+      onOpenChange={onOpenChange}
+      isDismissable={!isSubmitting}
+    >
+      <Modal.Container placement="auto" scroll="inside">
+        <Modal.Dialog className="sm:max-w-lg">
+          <Modal.CloseTrigger />
+          <Modal.Header>
+            <Modal.Heading>Confirm your picks</Modal.Heading>
+            <p className="text-sm text-muted">
+              Check your picks before you submit.
+            </p>
+          </Modal.Header>
+          <Modal.Body className="flex flex-col gap-4">
+            {isRandomPick ? <PicksRandomSubmitBanner /> : null}
+            <PicksSummaryContent
+              selectedTeams={selectedTeams}
+              selectedCategories={selectedCategories}
+              displayName={displayName}
+            />
+          </Modal.Body>
+          <Modal.Footer className="grid grid-cols-2 gap-2 sm:flex">
+            <Button
+              variant="secondary"
+              size="lg"
+              isDisabled={isSubmitting}
+              onPress={() => onOpenChange(false)}
+            >
+              Back
+            </Button>
+            <Button
+              size="lg"
+              isPending={isSubmitting}
+              onPress={() => void onConfirm()}
+            >
+              {({ isPending }) => (
+                <>
+                  {isPending ? <Spinner color="current" size="sm" /> : null}
+                  {isPending ? "Submitting" : submitLabel}
+                </>
+              )}
+            </Button>
+          </Modal.Footer>
+        </Modal.Dialog>
+      </Modal.Container>
+    </Modal.Backdrop>
   );
 }

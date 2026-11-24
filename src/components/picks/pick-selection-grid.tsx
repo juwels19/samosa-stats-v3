@@ -1,6 +1,6 @@
 "use client";
 
-import { Checkbox } from "@/components/ui/checkbox";
+import { CheckIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type PickSelectionGridItem = {
@@ -9,65 +9,85 @@ export type PickSelectionGridItem = {
   detail?: string;
 };
 
+/**
+ * Tappable tiles. Each tile is a toggle button, so it has a large touch
+ * target and announces its state with aria-pressed.
+ */
 export default function PickSelectionGrid({
   items,
   selectedIds,
   selectionFull,
-  idPrefix,
   readOnly = false,
+  layout = "grid",
   onToggle,
 }: {
   items: PickSelectionGridItem[];
   selectedIds: string[];
   selectionFull: boolean;
-  idPrefix: string;
   readOnly?: boolean;
+  layout?: "grid" | "list";
   onToggle: (id: string) => void;
 }) {
   const selectedIdSet = new Set(selectedIds);
 
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+    <ul
+      className={cn(
+        "grid gap-2",
+        layout === "grid"
+          ? "grid-cols-2 sm:grid-cols-3 xl:grid-cols-4"
+          : "grid-cols-1",
+      )}
+    >
       {items.map((item) => {
-        const checked = selectedIdSet.has(item.id);
-        const disabled = readOnly || (!checked && selectionFull);
+        const selected = selectedIdSet.has(item.id);
+        const disabled = readOnly || (!selected && selectionFull);
 
         return (
-          <label
-            key={item.id}
-            htmlFor={`${idPrefix}-${item.id}`}
-            data-selected={checked}
-            data-disabled={disabled}
-            className={cn(
-              "flex items-start gap-2 rounded-2xl border bg-muted/50 p-2.5 text-left transition-colors data-[selected=true]:border-primary/40 data-[selected=true]:bg-primary/20",
-              readOnly ? "cursor-default" : "cursor-pointer",
-              disabled && "cursor-not-allowed opacity-50",
-            )}
-          >
-            <Checkbox
-              id={`${idPrefix}-${item.id}`}
-              className="mt-0.5 shrink-0"
-              checked={checked}
+          <li key={item.id} className="flex">
+            <button
+              type="button"
+              aria-pressed={selected}
+              title={layout === "grid" && item.detail ? `${item.label} ${item.detail}` : undefined}
               disabled={disabled}
-              onCheckedChange={() => {
-                if (!readOnly) {
-                  onToggle(item.id);
-                }
-              }}
-            />
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm leading-tight font-medium">
-                {item.label}
+              onClick={() => onToggle(item.id)}
+              className={cn(
+                "flex min-h-14 w-full flex-1 items-start gap-3 rounded-2xl border border-border bg-surface p-3 text-left transition-[background-color,border-color,transform] duration-150 ease-out",
+                "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+                "enabled:active:scale-[0.97] enabled:hover:bg-surface-hover",
+                selected && "border-accent bg-accent-soft enabled:hover:bg-accent-soft-hover",
+                disabled && !selected && "opacity-45",
+                readOnly && "cursor-default",
+              )}
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border border-border-tertiary transition-colors",
+                  selected && "border-accent bg-accent text-accent-foreground",
+                )}
+              >
+                {selected ? <CheckIcon className="size-3.5" strokeWidth={3} /> : null}
               </span>
-              {item.detail ? (
-                <span className="mt-0.5 block line-clamp-2 text-xs leading-snug text-muted-foreground">
-                  {item.detail}
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm leading-tight font-semibold">
+                  {item.label}
                 </span>
-              ) : null}
-            </span>
-          </label>
+                {item.detail ? (
+                  <span
+                    className={cn(
+                      "mt-0.5 block text-xs leading-snug text-muted",
+                      layout === "grid" ? "truncate" : "line-clamp-2",
+                    )}
+                  >
+                    {item.detail}
+                  </span>
+                ) : null}
+              </span>
+            </button>
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
 }

@@ -1,42 +1,12 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { useCurrentUser } from "@/hooks/use-current-user";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import CreateSeason from "@/components/settings/seasons/active-season/create-season";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { useState } from "react";
+import { AlertDialog, Button, Skeleton, toast } from "@heroui/react";
 import { useMutation, useQuery } from "convex/react";
-import { toast } from "sonner";
+import { useState } from "react";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
-import { Skeleton } from "@/components/ui/skeleton";
+import AddSeasonForm from "./add-season-form";
 import SeasonsEmptyState from "./seasons-empty";
 
 export default function SeasonsList() {
@@ -46,127 +16,173 @@ export default function SeasonsList() {
     currentUser.user?.isAdmin ? {} : "skip",
   );
   const setActiveSeason = useMutation(api.seasons.setActive);
-  const [pendingSeasonId, setPendingSeasonId] = useState<Id<"seasons"> | null>(
-    null,
-  );
+  const [pendingId, setPendingId] = useState<Id<"seasons"> | null>(null);
+  const [confirmId, setConfirmId] = useState<Id<"seasons"> | null>(null);
 
-  const handleSetActive = async (seasonId: Id<"seasons">) => {
-    setPendingSeasonId(seasonId);
+  if (
+    currentUser.isLoading ||
+    (currentUser.user?.isAdmin && seasons === undefined)
+  ) {
+    return (
+      <div className="flex flex-col gap-8">
+        <Skeleton className="h-56 rounded-3xl" />
+        <Skeleton className="h-40 rounded-2xl" />
+      </div>
+    );
+  }
 
+  if (!currentUser.user?.isAdmin || !seasons) {
+    return (
+      <p className="text-sm text-muted">
+        You must be an admin to manage seasons.
+      </p>
+    );
+  }
+
+  const existingYears = seasons.map((s) => s.year);
+
+  if (seasons.length === 0) {
+    return (
+      <div className="flex flex-col gap-8">
+        <SeasonsEmptyState />
+        <section className="flex flex-col gap-3">
+          <h2 className="px-1 text-sm font-semibold">Add a season</h2>
+          <AddSeasonForm existingYears={existingYears} />
+        </section>
+      </div>
+    );
+  }
+
+  const active = seasons.find((s) => s.isActive) ?? null;
+  const others = seasons.filter((s) => !s.isActive);
+  const confirmSeason = seasons.find((s) => s._id === confirmId) ?? null;
+
+  async function handleSetActive(seasonId: Id<"seasons">) {
+    setPendingId(seasonId);
     try {
       await setActiveSeason({ seasonId });
-      toast.success("Active season updated");
+      toast.success("Active season changed");
     } catch (error) {
-      toast.error("Active season not updated", {
-        description:
-          error instanceof Error ? error.message : "Please try again.",
+      toast.danger("Active season not changed", {
+        description: error instanceof Error ? error.message : "Try again.",
       });
     } finally {
-      setPendingSeasonId(null);
+      setPendingId(null);
     }
-  };
+  }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Active Season</CardTitle>
-        <CardDescription>
-          Manage saved seasons and choose which one is currently active.
-        </CardDescription>
-        <CardAction>
-          <CreateSeason />
-        </CardAction>
-      </CardHeader>
-      <CardContent>
-        {currentUser.isLoading || seasons === undefined ? (
-          <Skeleton className="h-40 w-full rounded-3xl" />
-        ) : !currentUser.user?.isAdmin ? (
-          <div className="text-sm text-muted-foreground">
-            Admin access is required to manage seasons.
+    <div className="flex flex-col gap-8">
+      {active ? (
+        <section
+          aria-labelledby="active-season-heading"
+          className="flex flex-col gap-5 rounded-3xl bg-surface p-5 sm:p-6"
+        >
+          <div className="flex flex-col gap-1">
+            <h1
+              id="active-season-heading"
+              className="text-xs font-semibold tracking-wide text-accent uppercase"
+            >
+              Active season
+            </h1>
+            <p className="font-heading text-4xl font-bold tracking-tight tabular-nums">
+              {active.year}
+            </p>
+            <p className="text-muted">{active.gameName}</p>
           </div>
-        ) : seasons.length === 0 ? (
-          <SeasonsEmptyState />
-        ) : (
-          <div className="overflow-hidden rounded-3xl border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Year</TableHead>
-                  <TableHead>Game</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {seasons.map((season) => (
-                  <TableRow key={season._id}>
-                    <TableCell className="font-medium">{season.year}</TableCell>
-                    <TableCell>{season.gameName}</TableCell>
-                    <TableCell>
-                      <Badge
-                        className={
-                          season.isActive
-                            ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300"
-                            : "bg-destructive/10 text-destructive"
-                        }
-                      >
-                        {season.isActive ? "Active" : "Inactive"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {season.isActive ? (
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          disabled
-                        >
-                          Active
-                        </Button>
-                      ) : (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={pendingSeasonId !== null}
-                            >
-                              {pendingSeasonId === season._id
-                                ? "Updating..."
-                                : "Set as active"}
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                Set {season.year} as the active season?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will make {season.gameName} the active
-                                season and mark any current active season as
-                                inactive.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleSetActive(season._id)}
-                              >
-                                Set as active
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          <dl className="grid grid-cols-3 gap-2">
+            {(
+              [
+                ["Events", active.eventCount],
+                ["Categories", active.categoryCount],
+                ["Picks made", active.pickCount],
+              ] as const
+            ).map(([label, value]) => (
+              <div key={label} className="rounded-2xl bg-default p-3">
+                <dt className="text-xs text-muted">{label}</dt>
+                <dd className="font-heading text-xl font-semibold tabular-nums">
+                  {value ?? "-"}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      ) : (
+        <p className="rounded-2xl bg-warning-soft p-4 text-sm text-warning-soft-foreground">
+          No season is active. Make one active below.
+        </p>
+      )}
+
+      {others.length > 0 ? (
+        <section className="flex flex-col gap-2">
+          <h2 className="px-1 text-sm font-semibold">Other seasons</h2>
+          <ul className="divide-y divide-separator overflow-hidden rounded-2xl border border-border">
+            {others.map((season) => (
+              <li
+                key={season._id}
+                className="flex min-h-16 items-center gap-3 px-4 py-3"
+              >
+                <span className="font-heading text-lg font-semibold tabular-nums">
+                  {season.year}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm text-muted">
+                  {season.gameName}
+                </span>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="min-h-10"
+                  isDisabled={pendingId !== null}
+                  isPending={pendingId === season._id}
+                  onPress={() => setConfirmId(season._id)}
+                >
+                  Make active
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <section className="flex flex-col gap-3">
+        <h2 className="px-1 text-sm font-semibold">Add a season</h2>
+        <AddSeasonForm existingYears={existingYears} />
+      </section>
+
+      <AlertDialog.Backdrop
+        isOpen={confirmSeason !== null}
+        onOpenChange={(open) => !open && setConfirmId(null)}
+      >
+        <AlertDialog.Container placement="auto">
+          <AlertDialog.Dialog>
+            <AlertDialog.Header>
+              <AlertDialog.Icon status="accent" />
+              <AlertDialog.Heading>
+                Make {confirmSeason?.year} the active season?
+              </AlertDialog.Heading>
+            </AlertDialog.Header>
+            <AlertDialog.Body>
+              <p className="text-sm text-muted">
+                The dashboard, events and categories switch to{" "}
+                {confirmSeason?.gameName}. You can switch back at any time.
+              </p>
+            </AlertDialog.Body>
+            <AlertDialog.Footer className="grid grid-cols-2 gap-2 sm:flex">
+              <Button slot="close" variant="tertiary">
+                Cancel
+              </Button>
+              <Button
+                slot="close"
+                onPress={() =>
+                  confirmSeason && void handleSetActive(confirmSeason._id)
+                }
+              >
+                Make active
+              </Button>
+            </AlertDialog.Footer>
+          </AlertDialog.Dialog>
+        </AlertDialog.Container>
+      </AlertDialog.Backdrop>
+    </div>
   );
 }

@@ -8,7 +8,7 @@ export const metadata = {
 
 export default function SignInPage() {
   return (
-    <div className="flex min-h-full items-center justify-center px-4 py-10">
+    <div className="flex w-full justify-center px-4 pt-6 pb-10 sm:items-center sm:px-6 sm:pt-12">
       <SignIn
         forceRedirectUrl={ROUTES.DASHBOARD}
         signUpForceRedirectUrl={ROUTES.DASHBOARD}
@@ -17,6 +17,8 @@ export default function SignInPage() {
         withSignUp={false}
         appearance={{
           elements: {
+            rootBox: "w-full max-w-md",
+            cardBox: "w-full max-w-none",
             footerAction: "hidden",
           },
         }}

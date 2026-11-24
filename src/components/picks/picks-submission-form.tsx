@@ -1,31 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
-
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Alert, toast } from "@heroui/react";
 import { useMutation } from "convex/react";
 
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import {
-  EVENT_STATUS_BADGE_VARIANTS,
-  EVENT_STATUS_LABELS,
-} from "../events/constants";
+import EventStatusChip from "../events/event-status-chip";
 import { formatEventDate } from "../events/utils";
 import { arePicksFieldsDisabled } from "./are-picks-fields-disabled";
 import CategorySelection from "./category-selection";
 import DisplayNameField from "./display-name-field";
 import { getPicksSubmitState } from "./get-picks-submit-state";
 import PicksConfirmationDialog from "./picks-confirmation-dialog";
-import PicksFormActions from "./picks-form-actions";
+import PicksActionBar from "./picks-action-bar";
 import type { PickSubmissionData } from "./pick-submission-types";
 import TeamSelection from "./team-selection";
 import { getSelectedPickItems } from "./get-selected-pick-items";
@@ -114,7 +102,7 @@ export default function PicksSubmissionForm({
       handleConfirmationOpenChange(false);
       toast.success("Picks saved.");
     } catch (error) {
-      toast.error(
+      toast.danger(
         error instanceof Error ? error.message : "Could not save picks.",
       );
     } finally {
@@ -123,64 +111,40 @@ export default function PicksSubmissionForm({
   }
 
   return (
-    <div className="flex flex-col gap-5 px-4 py-4 sm:px-6">
-      <Card size="sm">
-        <CardHeader>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex flex-col gap-1">
-              <CardTitle>{data.event.displayName}</CardTitle>
-              <CardDescription>
-                {data.event.name}
-                <br />
-                {formatEventDate(data.event.startDate)} -{" "}
-                {formatEventDate(data.event.endDate)}
-              </CardDescription>
-            </div>
-            <Badge variant={EVENT_STATUS_BADGE_VARIANTS[data.event.status]}>
-              {EVENT_STATUS_LABELS[data.event.status]}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-5 lg:grid-cols-4">
-          <div className="col-span-1 lg:col-span-2">
-            <DisplayNameField
-              displayName={picksSelection.displayName}
-              disabled={fieldsDisabled}
-              onDisplayNameChange={picksSelection.setDisplayName}
-            />
-          </div>
-          <div className="col-span-1 lg:col-span-2">
-            <PicksFormActions
-              canRandomize={submitState.canRandomize}
-              canReview={submitState.canSubmit}
-              reviewLabel={
-                data.existingPick !== null
-                  ? "Review & update"
-                  : "Review & submit"
-              }
-              isSubmitting={isSubmitting}
-              onRandomize={() => {
-                setPendingRandomPick(
-                  randomizePickSelections({
-                    teams: data.teams,
-                    categories: data.categories,
-                    numberOfTeamPicks,
-                    numberOfCategoryPicks,
-                  }),
-                );
-                setConfirmationMode("random");
-                setConfirmationOpen(true);
-              }}
-              onReview={() => {
-                setConfirmationMode("manual");
-                setConfirmationOpen(true);
-              }}
-            />
-          </div>
-        </CardContent>
-      </Card>
+    <div className="flex flex-col gap-6 px-4 pt-1 sm:px-6">
+      <header className="flex flex-col gap-2">
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-balance sm:text-3xl">
+            {data.event.displayName}
+          </h1>
+          <EventStatusChip status={data.event.status} />
+        </div>
+        <p className="text-sm text-muted">
+          {data.event.name}
+          <span aria-hidden> · </span>
+          {formatEventDate(data.event.startDate)} to{" "}
+          {formatEventDate(data.event.endDate)}
+        </p>
+      </header>
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      {submitState.disabledReason && !submitState.canRandomize && !submitState.canSubmit ? (
+        <Alert status="warning">
+          <Alert.Indicator />
+          <Alert.Content>
+            <Alert.Description>{submitState.disabledReason}</Alert.Description>
+          </Alert.Content>
+        </Alert>
+      ) : null}
+
+      <div className="max-w-md">
+        <DisplayNameField
+          displayName={picksSelection.displayName}
+          disabled={fieldsDisabled}
+          onDisplayNameChange={picksSelection.setDisplayName}
+        />
+      </div>
+
+      <div className="grid gap-8 lg:grid-cols-[3fr_2fr] lg:gap-6">
         <TeamSelection
           teams={data.teams}
           selectedTeamIds={picksSelection.selectedTeamIds}
@@ -196,6 +160,34 @@ export default function PicksSubmissionForm({
           onToggleCategory={picksSelection.toggleCategory}
         />
       </div>
+
+      <PicksActionBar
+        teamCount={picksSelection.selectedTeamIds.length}
+        requiredTeamCount={numberOfTeamPicks}
+        categoryCount={picksSelection.selectedCategoryIds.length}
+        requiredCategoryCount={numberOfCategoryPicks}
+        canRandomize={submitState.canRandomize}
+        canReview={submitState.canSubmit}
+        reviewLabel={data.existingPick !== null ? "Review and update" : "Review and submit"}
+        disabledReason={submitState.disabledReason}
+        isSubmitting={isSubmitting}
+        onRandomize={() => {
+          setPendingRandomPick(
+            randomizePickSelections({
+              teams: data.teams,
+              categories: data.categories,
+              numberOfTeamPicks,
+              numberOfCategoryPicks,
+            }),
+          );
+          setConfirmationMode("random");
+          setConfirmationOpen(true);
+        }}
+        onReview={() => {
+          setConfirmationMode("manual");
+          setConfirmationOpen(true);
+        }}
+      />
 
       <PicksConfirmationDialog
         open={confirmationOpen}

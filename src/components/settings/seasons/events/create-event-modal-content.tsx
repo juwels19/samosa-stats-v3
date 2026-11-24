@@ -14,6 +14,7 @@ type CreateEventModalContentProps = {
   activeSeason: Doc<"seasons"> | null;
   globalCategories: Doc<"categories">[];
   seasonCategories: Doc<"categories">[];
+  isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
@@ -21,12 +22,15 @@ export default function CreateEventModalContent({
   activeSeason,
   globalCategories,
   seasonCategories,
+  isOpen,
   onOpenChange,
 }: CreateEventModalContentProps) {
   const { data } = useMultiStepModal<CreateEventModalData>();
 
   return (
     <MultiStepModal
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
       title="Add event"
       description="Load event details, choose categories, and confirm the setup."
       steps={[

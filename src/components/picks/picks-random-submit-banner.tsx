@@ -1,13 +1,15 @@
+import { Alert } from "@heroui/react";
+
 export default function PicksRandomSubmitBanner() {
   return (
-    <div
-      role="status"
-      className="rounded-3xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm"
-    >
-      <p className="font-medium">Random pick</p>
-      <p className="text-muted-foreground">
-        This submission will be saved as a random pick.
-      </p>
-    </div>
+    <Alert status="accent">
+      <Alert.Indicator />
+      <Alert.Content>
+        <Alert.Title>Random pick</Alert.Title>
+        <Alert.Description>
+          This pick is saved as random. You cannot change it after you submit.
+        </Alert.Description>
+      </Alert.Content>
+    </Alert>
   );
 }

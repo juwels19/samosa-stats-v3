@@ -18,9 +18,16 @@ export const active = query({
   },
 });
 
+const seasonWithStatsValidator = v.object({
+  ...seasonValidator.fields,
+  eventCount: v.optional(v.number()),
+  categoryCount: v.optional(v.number()),
+  pickCount: v.optional(v.number()),
+});
+
 export const list = query({
   args: {},
-  returns: v.array(seasonValidator),
+  returns: v.array(seasonWithStatsValidator),
   handler: async (ctx) => {
     const currentUser = await getCurrentUser(ctx);
 
@@ -28,11 +35,43 @@ export const list = query({
       throw new Error("Only admins can view seasons.");
     }
 
-    return await ctx.db
+    const seasons = await ctx.db
       .query("seasons")
       .withIndex("byYear")
       .order("desc")
       .collect();
+
+    return await Promise.all(
+      seasons.map(async (season) => {
+        const [events, categories] = await Promise.all([
+          ctx.db
+            .query("events")
+            .withIndex("bySeason", (q) => q.eq("season", season._id))
+            .collect(),
+          ctx.db
+            .query("categories")
+            .withIndex("bySeason", (q) => q.eq("season", season._id))
+            .collect(),
+        ]);
+        const pickCounts = await Promise.all(
+          events.map(
+            async (event) =>
+              (
+                await ctx.db
+                  .query("picks")
+                  .withIndex("byEvent", (q) => q.eq("event", event._id))
+                  .collect()
+              ).length,
+          ),
+        );
+        return {
+          ...season,
+          eventCount: events.length,
+          categoryCount: categories.length,
+          pickCount: pickCounts.reduce((sum, count) => sum + count, 0),
+        };
+      }),
+    );
   },
 });
 
