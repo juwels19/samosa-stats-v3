@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { Doc, Id } from "../../_generated/dataModel";
+import { winnerSourceValidator } from "../scoring/validators";
 
 export const seasonValidator = v.object({
   _id: v.id("seasons"),
@@ -7,6 +8,7 @@ export const seasonValidator = v.object({
   year: v.number(),
   gameName: v.string(),
   isActive: v.boolean(),
+  deductionAwardType: v.optional(v.number()),
 });
 
 export const categoryValidator = v.object({
@@ -16,6 +18,7 @@ export const categoryValidator = v.object({
   scoringDescription: v.string(),
   season: v.id("seasons"),
   isGlobal: v.boolean(),
+  winnerSource: v.optional(winnerSourceValidator),
 });
 
 export const eventStatusValidator = v.union(

@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as award_audit from "../award_audit.js";
 import type * as categories from "../categories.js";
 import type * as events from "../events.js";
 import type * as http from "../http.js";
@@ -27,7 +28,18 @@ import type * as lib_picks_replace_pick_selections from "../lib/picks/replace_pi
 import type * as lib_picks_split_event_categories from "../lib/picks/split_event_categories.js";
 import type * as lib_picks_validate_pick_submission from "../lib/picks/validate_pick_submission.js";
 import type * as lib_picks_validators from "../lib/picks/validators.js";
+import type * as lib_scoring_category_values from "../lib/scoring/category_values.js";
+import type * as lib_scoring_field_paths from "../lib/scoring/field_paths.js";
+import type * as lib_scoring_find_category_winners from "../lib/scoring/find_category_winners.js";
+import type * as lib_scoring_sources_event_data from "../lib/scoring/sources/event_data.js";
+import type * as lib_scoring_sources_statbotics from "../lib/scoring/sources/statbotics.js";
+import type * as lib_scoring_sources_statbotics_matches from "../lib/scoring/sources/statbotics_matches.js";
+import type * as lib_scoring_sources_tba from "../lib/scoring/sources/tba.js";
+import type * as lib_scoring_sources_tba_award_types from "../lib/scoring/sources/tba_award_types.js";
+import type * as lib_scoring_validators from "../lib/scoring/validators.js";
+import type * as lib_scoring_winner_config from "../lib/scoring/winner_config.js";
 import type * as picks from "../picks.js";
+import type * as scoring from "../scoring.js";
 import type * as seasons from "../seasons.js";
 import type * as users from "../users.js";
 
@@ -38,6 +50,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  award_audit: typeof award_audit;
   categories: typeof categories;
   events: typeof events;
   http: typeof http;
@@ -57,7 +70,18 @@ declare const fullApi: ApiFromModules<{
   "lib/picks/split_event_categories": typeof lib_picks_split_event_categories;
   "lib/picks/validate_pick_submission": typeof lib_picks_validate_pick_submission;
   "lib/picks/validators": typeof lib_picks_validators;
+  "lib/scoring/category_values": typeof lib_scoring_category_values;
+  "lib/scoring/field_paths": typeof lib_scoring_field_paths;
+  "lib/scoring/find_category_winners": typeof lib_scoring_find_category_winners;
+  "lib/scoring/sources/event_data": typeof lib_scoring_sources_event_data;
+  "lib/scoring/sources/statbotics": typeof lib_scoring_sources_statbotics;
+  "lib/scoring/sources/statbotics_matches": typeof lib_scoring_sources_statbotics_matches;
+  "lib/scoring/sources/tba": typeof lib_scoring_sources_tba;
+  "lib/scoring/sources/tba_award_types": typeof lib_scoring_sources_tba_award_types;
+  "lib/scoring/validators": typeof lib_scoring_validators;
+  "lib/scoring/winner_config": typeof lib_scoring_winner_config;
   picks: typeof picks;
+  scoring: typeof scoring;
   seasons: typeof seasons;
   users: typeof users;
 }>;

@@ -1,0 +1,273 @@
+import { findUnknownFields } from "../../../../../../convex/lib/scoring/field_paths";
+import {
+  winnerConfigSchema,
+  type MatchScope,
+  type ScoringSource,
+  type TeamScope,
+  type WinnerConfig,
+  type WinnerConfigInput,
+} from "../../../../../../convex/lib/scoring/winner_config";
+import type {
+  CALCULATION_OP_OPTIONS,
+  FILTER_OP_OPTIONS,
+  MEASURE_OP_OPTIONS,
+  ORDER_OPTIONS,
+  SELECT_TYPE_OPTIONS,
+  THRESHOLD_OP_OPTIONS,
+  VALUE_MODE_OPTIONS,
+} from "./constants";
+
+type OptionValue<Options extends readonly { value: string }[]> =
+  Options[number]["value"];
+
+/** Form state. Inputs hold strings, and `toWinnerConfig` converts them. */
+export type FilterFormValues = {
+  /** `measure` means the measure's own source. */
+  source: ScoringSource | "measure";
+  field: string;
+  op: OptionValue<typeof FILTER_OP_OPTIONS>;
+  value: string;
+};
+
+export type MeasureFormValues = {
+  name: string;
+  source: ScoringSource;
+  op: OptionValue<typeof MEASURE_OP_OPTIONS>;
+  field: string;
+  where: FilterFormValues[];
+};
+
+export type ScoringFormValues = {
+  mode: "manual" | "config";
+  teams: TeamScope;
+  matches: MatchScope;
+  measures: MeasureFormValues[];
+  valueMode: OptionValue<typeof VALUE_MODE_OPTIONS>;
+  valueMeasure: string;
+  calculationOp: OptionValue<typeof CALCULATION_OP_OPTIONS>;
+  left: string;
+  right: string;
+  selectType: OptionValue<typeof SELECT_TYPE_OPTIONS>;
+  n: string;
+  order: OptionValue<typeof ORDER_OPTIONS>;
+  thresholdOp: OptionValue<typeof THRESHOLD_OP_OPTIONS>;
+  selectValue: string;
+};
+
+export const EMPTY_FILTER: FilterFormValues = {
+  source: "measure",
+  field: "",
+  op: "eq",
+  value: "",
+};
+
+export const DEFAULT_MEASURE: MeasureFormValues = {
+  name: "rank",
+  source: "tba.rankings",
+  op: "value",
+  field: "rank",
+  where: [],
+};
+
+export const DEFAULT_FORM_VALUES: ScoringFormValues = {
+  mode: "config",
+  teams: "all",
+  matches: "qualification",
+  measures: [DEFAULT_MEASURE],
+  valueMode: "measure",
+  valueMeasure: "rank",
+  calculationOp: "divide",
+  left: "",
+  right: "",
+  selectType: "nth",
+  n: "1",
+  order: "asc",
+  thresholdOp: "gte",
+  selectValue: "",
+};
+
+type WinnerSource =
+  { type: "manual" } | { type: "config"; config: unknown } | undefined;
+
+export function toFormValues(winnerSource: WinnerSource): ScoringFormValues {
+  if (winnerSource === undefined) {
+    return DEFAULT_FORM_VALUES;
+  }
+  if (winnerSource.type === "manual") {
+    return { ...DEFAULT_FORM_VALUES, mode: "manual" };
+  }
+
+  const parsed = winnerConfigSchema.safeParse(winnerSource.config);
+  if (!parsed.success) {
+    return DEFAULT_FORM_VALUES;
+  }
+  const config = parsed.data;
+  const select = config.select;
+
+  return {
+    ...DEFAULT_FORM_VALUES,
+    mode: "config",
+    teams: config.teams,
+    matches: config.matches,
+    measures: Object.entries(config.measures).map(([name, measure]) => ({
+      name,
+      source: measure.source,
+      op: measure.op,
+      field: measure.field ?? "",
+      where: measure.where.map((filter) => ({
+        source:
+          filter.source === undefined || filter.source === measure.source
+            ? "measure"
+            : filter.source,
+        field: filter.field,
+        op: filter.op,
+        value: Array.isArray(filter.value)
+          ? filter.value.join(", ")
+          : String(filter.value),
+      })),
+    })),
+    ...(typeof config.value === "string"
+      ? { valueMode: "measure", valueMeasure: config.value }
+      : {
+          valueMode: "calculation",
+          calculationOp: config.value.op,
+          left: String(config.value.left),
+          right: String(config.value.right),
+        }),
+    selectType: select.type,
+    ...(select.type === "nth" || select.type === "top"
+      ? { n: String(select.n), order: select.order }
+      : {}),
+    ...(select.type === "threshold"
+      ? { thresholdOp: select.op, selectValue: String(select.value) }
+      : {}),
+    ...(select.type === "equals" ? { selectValue: String(select.value) } : {}),
+  };
+}
+
+/** `"3"` to 3, `"true"` to true, anything else stays a string. */
+function parseScalar(text: string): string | number | boolean {
+  const trimmed = text.trim();
+  if (trimmed === "true") return true;
+  if (trimmed === "false") return false;
+  if (trimmed !== "" && Number.isFinite(Number(trimmed)))
+    return Number(trimmed);
+  return trimmed;
+}
+
+function parseOperand(text: string): string | number {
+  const trimmed = text.trim();
+  return trimmed !== "" && Number.isFinite(Number(trimmed))
+    ? Number(trimmed)
+    : trimmed;
+}
+
+function parseNumber(text: string) {
+  return text.trim() === "" ? Number.NaN : Number(text);
+}
+
+export function toWinnerConfigInput(
+  values: ScoringFormValues,
+): WinnerConfigInput {
+  const select: WinnerConfigInput["select"] =
+    values.selectType === "nth" || values.selectType === "top"
+      ? {
+          type: values.selectType,
+          n: parseNumber(values.n),
+          order: values.order,
+        }
+      : values.selectType === "threshold"
+        ? {
+            type: "threshold",
+            op: values.thresholdOp,
+            value: parseNumber(values.selectValue),
+          }
+        : { type: "equals", value: parseNumber(values.selectValue) };
+
+  return {
+    teams: values.teams,
+    matches: values.matches,
+    measures: Object.fromEntries(
+      values.measures.map((measure) => [
+        measure.name.trim(),
+        {
+          source: measure.source,
+          op: measure.op,
+          ...(measure.op === "count" || measure.field.trim() === ""
+            ? {}
+            : { field: measure.field.trim() }),
+          where: measure.where.map((filter) => ({
+            ...(filter.source === "measure" || filter.source === measure.source
+              ? {}
+              : { source: filter.source }),
+            field: filter.field.trim(),
+            op: filter.op,
+            value:
+              filter.op === "in" || filter.op === "notIn"
+                ? filter.value
+                    .split(",")
+                    .filter((part) => part.trim() !== "")
+                    .map(parseScalar)
+                : parseScalar(filter.value),
+          })),
+        },
+      ]),
+    ),
+    value:
+      values.valueMode === "measure"
+        ? values.valueMeasure
+        : {
+            op: values.calculationOp,
+            left: parseOperand(values.left),
+            right: parseOperand(values.right),
+          },
+    select,
+  };
+}
+
+export type ConfigCheck =
+  | { ok: true; config: WinnerConfig; issues: [] }
+  | { ok: false; config: null; issues: string[] };
+
+/** Checks the form against the schema and the season's fields. */
+export function checkConfig(
+  values: ScoringFormValues,
+  year: number,
+): ConfigCheck {
+  const names = values.measures.map((measure) => measure.name.trim());
+  const duplicate = names.find((name, index) => names.indexOf(name) !== index);
+  if (duplicate) {
+    return {
+      ok: false,
+      config: null,
+      issues: [`Two measures are named "${duplicate}". Use different names.`],
+    };
+  }
+
+  const parsed = winnerConfigSchema.safeParse(toWinnerConfigInput(values));
+  if (!parsed.success) {
+    return {
+      ok: false,
+      config: null,
+      issues: parsed.error.issues.map((issue) =>
+        issue.path.length > 0
+          ? `${issue.path.join(" › ")}: ${issue.message}`
+          : issue.message,
+      ),
+    };
+  }
+
+  const unknownFields = findUnknownFields(parsed.data, year);
+  if (unknownFields.length > 0) {
+    return {
+      ok: false,
+      config: null,
+      issues: unknownFields.map(
+        (issue) =>
+          `${issue.measure}: "${issue.field}" is not a ${issue.source} field in ${year}.`,
+      ),
+    };
+  }
+
+  return { ok: true, config: parsed.data, issues: [] };
+}

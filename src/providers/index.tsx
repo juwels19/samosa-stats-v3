@@ -41,7 +41,7 @@ export default function Providers({ children }: { children: ReactNode }) {
         <ClerkProvider>
           <ConvexClientProvider>
             {children}
-            <Toast.Provider placement="top" />
+            <Toast.Provider placement="top end" />
             <ReactQueryDevtools buttonPosition="bottom-left" />
           </ConvexClientProvider>
         </ClerkProvider>

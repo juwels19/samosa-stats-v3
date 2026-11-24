@@ -2,23 +2,10 @@ import { v } from "convex/values";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { getCurrentUser } from "./users";
-
-const seasonValidator = v.object({
-  _id: v.id("seasons"),
-  _creationTime: v.number(),
-  year: v.number(),
-  gameName: v.string(),
-  isActive: v.boolean(),
-});
-
-const categoryValidator = v.object({
-  _id: v.id("categories"),
-  _creationTime: v.number(),
-  text: v.string(),
-  scoringDescription: v.string(),
-  season: v.id("seasons"),
-  isGlobal: v.boolean(),
-});
+import { categoryValidator, seasonValidator } from "./lib/events/validators";
+import { findUnknownFields } from "./lib/scoring/field_paths";
+import { winnerSourceValidator } from "./lib/scoring/validators";
+import { winnerConfigSchema } from "./lib/scoring/winner_config";
 
 export const list = query({
   args: {},
@@ -92,6 +79,92 @@ export const create = mutation({
       isGlobal: args.isGlobal,
       season: activeSeason._id,
     });
+  },
+});
+
+/** One category with its season, for the scoring setup page. */
+export const get = query({
+  args: { categoryId: v.string() },
+  returns: v.union(
+    v.object({ category: categoryValidator, season: seasonValidator }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const currentUser = await getCurrentUser(ctx);
+
+    if (!currentUser?.isAdmin) {
+      throw new Error("Only admins can view categories.");
+    }
+
+    const categoryId = ctx.db.normalizeId("categories", args.categoryId);
+    const category = categoryId === null ? null : await ctx.db.get(categoryId);
+    if (category === null) {
+      return null;
+    }
+
+    const season = await ctx.db.get(category.season);
+    if (season === null) {
+      throw new Error("The category's season was not found.");
+    }
+
+    return { category, season };
+  },
+});
+
+/**
+ * Sets how a category finds its winners. A config is checked against the
+ * schema and against the fields its sources have in the category's season.
+ */
+export const setWinnerSource = mutation({
+  args: {
+    categoryId: v.id("categories"),
+    winnerSource: winnerSourceValidator,
+  },
+  returns: v.null(),
+  async handler(ctx, args) {
+    const currentUser = await getCurrentUser(ctx);
+
+    if (!currentUser?.isAdmin) {
+      throw new Error("Only admins can change category scoring.");
+    }
+
+    const category = await ctx.db.get(args.categoryId);
+    if (category === null) {
+      throw new Error("Category not found.");
+    }
+
+    if (args.winnerSource.type === "manual") {
+      await ctx.db.patch(args.categoryId, { winnerSource: { type: "manual" } });
+      return null;
+    }
+
+    const season = await ctx.db.get(category.season);
+    if (season === null) {
+      throw new Error("The category's season was not found.");
+    }
+
+    const parsed = winnerConfigSchema.safeParse(args.winnerSource.config);
+    if (!parsed.success) {
+      throw new Error(
+        `The scoring config is not valid: ${parsed.error.issues
+          .map((issue) => issue.message)
+          .join(" ")}`,
+      );
+    }
+
+    const unknownFields = findUnknownFields(parsed.data, season.year);
+    if (unknownFields.length > 0) {
+      throw new Error(
+        `These fields do not exist in ${season.year}: ${unknownFields
+          .map((issue) => `${issue.field} (${issue.measure})`)
+          .join(", ")}.`,
+      );
+    }
+
+    await ctx.db.patch(args.categoryId, {
+      winnerSource: { type: "config", config: parsed.data },
+    });
+    return null;
   },
 });
 

@@ -7,6 +7,7 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import AddSeasonForm from "./add-season-form";
+import DeductionAwardField from "./deduction-award-field";
 import SeasonsEmptyState from "./seasons-empty";
 
 export default function SeasonsList() {
@@ -106,6 +107,10 @@ export default function SeasonsList() {
               </div>
             ))}
           </dl>
+          <DeductionAwardField
+            seasonId={active._id}
+            awardType={active.deductionAwardType}
+          />
         </section>
       ) : (
         <p className="rounded-2xl bg-warning-soft p-4 text-sm text-warning-soft-foreground">

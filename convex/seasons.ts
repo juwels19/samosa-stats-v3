@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import { getCurrentUser } from "./users";
+import { getTbaAwardType } from "./lib/scoring/sources/tba_award_types";
 
 const seasonValidator = v.object({
   _id: v.id("seasons"),
@@ -8,6 +9,7 @@ const seasonValidator = v.object({
   year: v.number(),
   gameName: v.string(),
   isActive: v.boolean(),
+  deductionAwardType: v.optional(v.number()),
 });
 
 export const active = query({
@@ -72,6 +74,42 @@ export const list = query({
         };
       }),
     );
+  },
+});
+
+/**
+ * Sets the award whose winners give the award deduction. See "Deduction
+ * award" in docs/scoring.md. Null clears it.
+ */
+export const setDeductionAward = mutation({
+  args: {
+    seasonId: v.id("seasons"),
+    awardType: v.union(v.number(), v.null()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const currentUser = await getCurrentUser(ctx);
+
+    if (!currentUser?.isAdmin) {
+      throw new Error("Only admins can change the deduction award.");
+    }
+
+    const season = await ctx.db.get(args.seasonId);
+    if (season === null) {
+      throw new Error("Season not found.");
+    }
+
+    if (
+      args.awardType !== null &&
+      getTbaAwardType(args.awardType) === undefined
+    ) {
+      throw new Error(`Award type ${args.awardType} is not a TBA award type.`);
+    }
+
+    await ctx.db.patch(args.seasonId, {
+      deductionAwardType: args.awardType ?? undefined,
+    });
+    return null;
   },
 });
 

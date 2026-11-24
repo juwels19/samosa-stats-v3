@@ -1,6 +1,8 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+import { winnerSourceValidator } from "./lib/scoring/validators";
+
 export default defineSchema({
   users: defineTable({
     externalId: v.optional(v.string()),
@@ -31,6 +33,8 @@ export default defineSchema({
     year: v.number(),
     gameName: v.string(),
     isActive: v.boolean(),
+    /** TBA award type whose winners give the award deduction. */
+    deductionAwardType: v.optional(v.number()),
   })
     .index("byYear", ["year"])
     .index("byIsActive", ["isActive"]),
@@ -70,6 +74,8 @@ export default defineSchema({
     scoringDescription: v.string(),
     season: v.id("seasons"),
     isGlobal: v.boolean(),
+    /** Not set means the category has no scoring setup yet. */
+    winnerSource: v.optional(winnerSourceValidator),
   })
     .index("bySeason", ["season"])
     .index("bySeasonAndIsGlobal", ["season", "isGlobal"]),

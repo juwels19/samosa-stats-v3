@@ -1,8 +1,9 @@
 "use client";
 
-import { SearchField, Skeleton } from "@heroui/react";
+import { buttonVariants, SearchField, Skeleton } from "@heroui/react";
 import { useQuery } from "convex/react";
-import { Globe2Icon } from "lucide-react";
+import { Globe2Icon, SlidersHorizontalIcon } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { cn } from "@/lib/utils";
@@ -11,6 +12,7 @@ import { api } from "../../../../../convex/_generated/api";
 import CategoriesEmptyState from "./categories-empty";
 import CreateCategory from "./create-category";
 import ImportCategories from "./import-categories";
+import WinnerSourceChip from "./scoring/winner-source-chip";
 
 type Scope = "all" | "global" | "season";
 
@@ -147,6 +149,16 @@ export default function CategoriesList() {
               <p className="text-sm leading-6 whitespace-pre-wrap text-muted">
                 {category.scoringDescription}
               </p>
+              <div className="mt-auto flex items-center justify-between gap-3 pt-1">
+                <WinnerSourceChip winnerSource={category.winnerSource} />
+                <Link
+                  href={`/settings/seasons/categories/${category._id}`}
+                  className={buttonVariants({ size: "sm", variant: "secondary" })}
+                >
+                  <SlidersHorizontalIcon className="size-4" aria-hidden />
+                  Scoring
+                </Link>
+              </div>
             </li>
           ))}
         </ul>
