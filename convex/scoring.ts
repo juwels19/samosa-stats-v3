@@ -1,7 +1,24 @@
 import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
-import { action, internalQuery } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
+import {
+  action,
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
+import { categoryValidator, eventStatusValidator } from "./lib/events/validators";
+import { getCategoryValues } from "./lib/scoring/category_values";
+import {
+  checkManualWinners,
+  findEventCategoryWinners,
+  getSourcesForConfigs,
+  loadEventSourceRows,
+} from "./lib/scoring/event_winners";
 import { findUnknownFields } from "./lib/scoring/field_paths";
 import { findCategoryWinners } from "./lib/scoring/find_category_winners";
 import { loadScoringEventData } from "./lib/scoring/sources/event_data";
@@ -9,6 +26,10 @@ import {
   getRequiredSources,
   winnerConfigSchema,
 } from "./lib/scoring/winner_config";
+import {
+  categoryWinnerResultValidator,
+  teamWinnerResultValidator,
+} from "./lib/scoring/validators";
 import { getCurrentUser } from "./users";
 
 export const currentUserIsAdmin = internalQuery({
@@ -18,20 +39,6 @@ export const currentUserIsAdmin = internalQuery({
     const currentUser = await getCurrentUser(ctx);
     return currentUser?.isAdmin ?? false;
   },
-});
-
-const teamPreviewValidator = v.object({
-  team: v.number(),
-  measures: v.record(v.string(), v.union(v.number(), v.null())),
-  value: v.union(v.number(), v.null()),
-  excludedReason: v.optional(
-    v.union(
-      v.literal("notInScope"),
-      v.literal("missingData"),
-      v.literal("divideByZero"),
-    ),
-  ),
-  isWinner: v.boolean(),
 });
 
 /**
@@ -46,7 +53,7 @@ export const previewWinners = action({
   },
   returns: v.object({
     winners: v.array(v.number()),
-    teams: v.array(teamPreviewValidator),
+    teams: v.array(teamWinnerResultValidator),
     unknownFields: v.array(
       v.object({ measure: v.string(), source: v.string(), field: v.string() }),
     ),
@@ -86,3 +93,351 @@ export const previewWinners = action({
     };
   },
 });
+
+const eventScoringCategoryValidator = v.object({
+  ...categoryValidator.fields,
+  /** Number of submissions that picked the category. */
+  picks: v.number(),
+  baseValue: v.number(),
+  /** Points for each winning picked team, with the current picks. */
+  value: v.number(),
+  isTop: v.boolean(),
+  /** The current winners. Null when there are none yet. */
+  result: v.union(categoryWinnerResultValidator, v.null()),
+});
+
+/**
+ * The categories at an event with their current value and winners, for the
+ * admin scoring page.
+ */
+export const getEventScoring = query({
+  args: { eventId: v.string() },
+  returns: v.union(
+    v.object({
+      event: v.object({
+        _id: v.id("events"),
+        name: v.string(),
+        displayName: v.string(),
+        eventCode: v.string(),
+        status: eventStatusValidator,
+        year: v.number(),
+      }),
+      submissionCount: v.number(),
+      teams: v.array(v.object({ number: v.number(), name: v.string() })),
+      categories: v.array(eventScoringCategoryValidator),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const currentUser = await getCurrentUser(ctx);
+    if (!currentUser?.isAdmin) {
+      throw new Error("Only admins can view event scoring.");
+    }
+
+    const eventId = ctx.db.normalizeId("events", args.eventId);
+    const event = eventId === null ? null : await ctx.db.get(eventId);
+    if (event === null) {
+      return null;
+    }
+
+    const season = await ctx.db.get(event.season);
+    if (season === null) {
+      throw new Error("The event's season was not found.");
+    }
+
+    const [categories, picks, winnerRows, teams] = await Promise.all([
+      getEventCategories(ctx, event),
+      ctx.db
+        .query("picks")
+        .withIndex("byEvent", (q) => q.eq("event", event._id))
+        .collect(),
+      ctx.db
+        .query("categoryWinners")
+        .withIndex("byEvent", (q) => q.eq("event", event._id))
+        .collect(),
+      getEventTeams(ctx, event._id),
+    ]);
+
+    const { values } = getCategoryValues({
+      categoryIds: categories.map((category) => category._id),
+      submissions: picks.map((pick) => ({ categoryIds: pick.categories })),
+    });
+    const resultsByCategory = new Map(
+      winnerRows.map((row) => [row.category, row.result]),
+    );
+
+    return {
+      event: {
+        _id: event._id,
+        name: event.name,
+        displayName: event.displayName,
+        eventCode: event.eventCode,
+        status: event.status,
+        year: season.year,
+      },
+      submissionCount: picks.length,
+      teams: teams.toSorted((a, b) => a.number - b.number),
+      categories: categories.map((category) => {
+        const value = values.get(category._id);
+        if (value === undefined) {
+          throw new Error(`No value for category ${category._id}.`);
+        }
+        const result = resultsByCategory.get(category._id) ?? null;
+        return {
+          ...category,
+          ...value,
+          result: resultMatchesSource(result, category.winnerSource)
+            ? result
+            : null,
+        };
+      }),
+    };
+  },
+});
+
+export const getCalculationInput = internalQuery({
+  args: { eventId: v.id("events") },
+  returns: v.object({
+    isAdmin: v.boolean(),
+    year: v.number(),
+    eventCode: v.string(),
+    teams: v.array(v.number()),
+    categories: v.array(
+      v.object({ categoryId: v.id("categories"), config: v.any() }),
+    ),
+  }),
+  handler: async (ctx, args) => {
+    const currentUser = await getCurrentUser(ctx);
+    const event = await ctx.db.get(args.eventId);
+    if (event === null) {
+      throw new Error("Event not found.");
+    }
+    const season = await ctx.db.get(event.season);
+    if (season === null) {
+      throw new Error("The event's season was not found.");
+    }
+
+    const [categories, teams] = await Promise.all([
+      getEventCategories(ctx, event),
+      getEventTeams(ctx, event._id),
+    ]);
+
+    return {
+      isAdmin: currentUser?.isAdmin ?? false,
+      year: season.year,
+      eventCode: event.eventCode,
+      teams: teams.map((team) => team.number),
+      categories: categories.flatMap((category) =>
+        category.winnerSource?.type === "config"
+          ? [{ categoryId: category._id, config: category.winnerSource.config }]
+          : [],
+      ),
+    };
+  },
+});
+
+export const saveCalculatedWinners = internalMutation({
+  args: {
+    eventId: v.id("events"),
+    calculatedAt: v.number(),
+    outcomes: v.array(
+      v.union(
+        v.object({
+          categoryId: v.id("categories"),
+          type: v.literal("config"),
+          winners: v.array(v.number()),
+          teams: v.array(teamWinnerResultValidator),
+        }),
+        v.object({
+          categoryId: v.id("categories"),
+          type: v.literal("error"),
+          message: v.string(),
+        }),
+      ),
+    ),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    for (const { categoryId, ...outcome } of args.outcomes) {
+      // The category can change to manual while the action runs.
+      const category = await ctx.db.get(categoryId);
+      if (category?.winnerSource?.type !== "config") {
+        continue;
+      }
+
+      await upsertCategoryWinners(ctx, args.eventId, categoryId, {
+        ...outcome,
+        calculatedAt: args.calculatedAt,
+      });
+    }
+    return null;
+  },
+});
+
+/**
+ * Gets the latest TBA and Statbotics data for an event and saves the winners
+ * of each automatic category. Manual categories do not change.
+ */
+export const calculateEventWinners = action({
+  args: { eventId: v.id("events") },
+  returns: v.object({ calculated: v.number(), errors: v.number() }),
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{ calculated: number; errors: number }> => {
+    const input = await ctx.runQuery(internal.scoring.getCalculationInput, {
+      eventId: args.eventId,
+    });
+    if (!input.isAdmin) {
+      throw new Error("Only admins can calculate category winners.");
+    }
+    if (input.categories.length === 0) {
+      return { calculated: 0, errors: 0 };
+    }
+    if (input.teams.length === 0) {
+      throw new Error("Load the event's teams first.");
+    }
+
+    const sourceRows = await loadEventSourceRows({
+      year: input.year,
+      eventCode: input.eventCode,
+      teams: input.teams,
+      sources: getSourcesForConfigs(
+        input.categories.map((category) => category.config),
+      ),
+    });
+    const outcomes = findEventCategoryWinners({
+      categories: input.categories,
+      teams: input.teams,
+      sourceRows,
+    });
+
+    await ctx.runMutation(internal.scoring.saveCalculatedWinners, {
+      eventId: args.eventId,
+      calculatedAt: Date.now(),
+      outcomes,
+    });
+
+    const errors = outcomes.filter((outcome) => outcome.type === "error");
+    return { calculated: outcomes.length - errors.length, errors: errors.length };
+  },
+});
+
+/**
+ * Sets the winners of a manual category at an event. An empty list removes
+ * the winners.
+ */
+export const setManualWinners = mutation({
+  args: {
+    eventId: v.id("events"),
+    categoryId: v.id("categories"),
+    winners: v.array(v.number()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const currentUser = await getCurrentUser(ctx);
+    if (!currentUser?.isAdmin) {
+      throw new Error("Only admins can set category winners.");
+    }
+
+    const [event, category] = await Promise.all([
+      ctx.db.get(args.eventId),
+      ctx.db.get(args.categoryId),
+    ]);
+    if (event === null) {
+      throw new Error("Event not found.");
+    }
+    if (category === null || !event.categories.includes(category._id)) {
+      throw new Error("The category is not offered at this event.");
+    }
+    if (category.winnerSource?.type !== "manual") {
+      throw new Error("Only manual categories take winners from an admin.");
+    }
+
+    const eventTeams = await getEventTeams(ctx, event._id);
+    const winners = checkManualWinners(
+      args.winners,
+      new Set(eventTeams.map((team) => team.number)),
+    );
+
+    if (winners.length === 0) {
+      const existing = await getCategoryWinnersRow(ctx, event._id, category._id);
+      if (existing !== null) {
+        await ctx.db.delete(existing._id);
+      }
+      return null;
+    }
+
+    await upsertCategoryWinners(ctx, event._id, category._id, {
+      type: "manual",
+      winners,
+      updatedBy: currentUser._id,
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+async function getEventCategories(ctx: QueryCtx, event: Doc<"events">) {
+  const categories = await Promise.all(
+    event.categories.map((categoryId) => ctx.db.get(categoryId)),
+  );
+  return categories.filter((category) => category !== null);
+}
+
+async function getEventTeams(ctx: QueryCtx, eventId: Id<"events">) {
+  const eventTeams = await ctx.db
+    .query("eventTeams")
+    .withIndex("byEvent", (q) => q.eq("event", eventId))
+    .collect();
+  const teams = await Promise.all(
+    eventTeams.map((eventTeam) => ctx.db.get(eventTeam.team)),
+  );
+  return teams
+    .filter((team) => team !== null)
+    .map((team) => ({ number: Number(team.number), name: team.name }));
+}
+
+async function getCategoryWinnersRow(
+  ctx: QueryCtx,
+  eventId: Id<"events">,
+  categoryId: Id<"categories">,
+) {
+  return await ctx.db
+    .query("categoryWinners")
+    .withIndex("byEventAndCategory", (q) =>
+      q.eq("event", eventId).eq("category", categoryId),
+    )
+    .unique();
+}
+
+async function upsertCategoryWinners(
+  ctx: MutationCtx,
+  eventId: Id<"events">,
+  categoryId: Id<"categories">,
+  result: Doc<"categoryWinners">["result"],
+) {
+  const existing = await getCategoryWinnersRow(ctx, eventId, categoryId);
+  if (existing === null) {
+    await ctx.db.insert("categoryWinners", {
+      event: eventId,
+      category: categoryId,
+      result,
+    });
+  } else {
+    await ctx.db.patch(existing._id, { result });
+  }
+}
+
+/** A saved result counts only while the category keeps the same source. */
+function resultMatchesSource(
+  result: Doc<"categoryWinners">["result"] | null,
+  winnerSource: Doc<"categories">["winnerSource"],
+) {
+  if (result === null || winnerSource === undefined) {
+    return false;
+  }
+  return winnerSource.type === "manual"
+    ? result.type === "manual"
+    : result.type === "config" || result.type === "error";
+}

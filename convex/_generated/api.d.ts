@@ -29,6 +29,7 @@ import type * as lib_picks_split_event_categories from "../lib/picks/split_event
 import type * as lib_picks_validate_pick_submission from "../lib/picks/validate_pick_submission.js";
 import type * as lib_picks_validators from "../lib/picks/validators.js";
 import type * as lib_scoring_category_values from "../lib/scoring/category_values.js";
+import type * as lib_scoring_event_winners from "../lib/scoring/event_winners.js";
 import type * as lib_scoring_field_paths from "../lib/scoring/field_paths.js";
 import type * as lib_scoring_find_category_winners from "../lib/scoring/find_category_winners.js";
 import type * as lib_scoring_sources_event_data from "../lib/scoring/sources/event_data.js";
@@ -71,6 +72,7 @@ declare const fullApi: ApiFromModules<{
   "lib/picks/validate_pick_submission": typeof lib_picks_validate_pick_submission;
   "lib/picks/validators": typeof lib_picks_validators;
   "lib/scoring/category_values": typeof lib_scoring_category_values;
+  "lib/scoring/event_winners": typeof lib_scoring_event_winners;
   "lib/scoring/field_paths": typeof lib_scoring_field_paths;
   "lib/scoring/find_category_winners": typeof lib_scoring_find_category_winners;
   "lib/scoring/sources/event_data": typeof lib_scoring_sources_event_data;

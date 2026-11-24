@@ -13,3 +13,7 @@ export const ROUTES = {
 export function getPicksRoute(eventCode: string) {
   return `${ROUTES.PICKS}/${eventCode}`;
 }
+
+export function getEventScoresRoute(eventId: string) {
+  return `${ROUTES.SCORES}/${eventId}`;
+}

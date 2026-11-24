@@ -8,6 +8,7 @@ import { useState } from "react";
 
 import { api } from "../../../../../../convex/_generated/api";
 import type { WinnerConfig } from "../../../../../../convex/lib/scoring/winner_config";
+import { getSelectOrder } from "./get-select-order";
 import PreviewResultsTable from "./preview-results-table";
 
 type PreviewResult = FunctionReturnType<typeof api.scoring.previewWinners>;
@@ -54,10 +55,7 @@ export default function ScoringPreview({
     }
   };
 
-  const order =
-    config?.select.type === "nth" || config?.select.type === "top"
-      ? config.select.order
-      : "desc";
+  const order = config === null ? "desc" : getSelectOrder(config);
 
   return (
     <section className="flex flex-col gap-3">
@@ -127,7 +125,7 @@ export default function ScoringPreview({
               {result.unknownFields.map((issue) => issue.field).join(", ")}
             </p>
           ) : null}
-          <PreviewResultsTable result={result} order={order} />
+          <PreviewResultsTable teams={result.teams} order={order} />
         </div>
       ) : null}
     </section>

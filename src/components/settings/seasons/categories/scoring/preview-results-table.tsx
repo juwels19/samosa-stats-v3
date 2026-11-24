@@ -2,24 +2,21 @@
 
 import { Chip, Table } from "@heroui/react";
 
-import type { FunctionReturnType } from "convex/server";
-import type { api } from "../../../../../../convex/_generated/api";
+import type { TeamWinnerResult } from "../../../../../../convex/lib/scoring/find_category_winners";
 import { EXCLUDED_REASON_LABELS } from "./constants";
 import { formatPreviewNumber } from "./format-preview-number";
 import { sortPreviewTeams } from "./sort-preview-teams";
 
-type PreviewResult = FunctionReturnType<typeof api.scoring.previewWinners>;
-
 /** Each team's measures and value, with the winners first. */
 export default function PreviewResultsTable({
-  result,
+  teams: unsortedTeams,
   order,
 }: {
-  result: PreviewResult;
+  teams: readonly TeamWinnerResult[];
   order: "asc" | "desc";
 }) {
-  const measureNames = Object.keys(result.teams[0]?.measures ?? {});
-  const teams = sortPreviewTeams(result.teams, order);
+  const measureNames = Object.keys(unsortedTeams[0]?.measures ?? {});
+  const teams = sortPreviewTeams(unsortedTeams, order);
 
   return (
     <Table>

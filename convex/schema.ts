@@ -1,7 +1,10 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
-import { winnerSourceValidator } from "./lib/scoring/validators";
+import {
+  categoryWinnerResultValidator,
+  winnerSourceValidator,
+} from "./lib/scoring/validators";
 
 export default defineSchema({
   users: defineTable({
@@ -102,4 +105,12 @@ export default defineSchema({
     .index("byPick", ["pick"])
     .index("byCategory", ["category"])
     .index("byPickAndCategory", ["pick", "category"]),
+  /** The current winners of each category at an event. */
+  categoryWinners: defineTable({
+    event: v.id("events"),
+    category: v.id("categories"),
+    result: categoryWinnerResultValidator,
+  })
+    .index("byEvent", ["event"])
+    .index("byEventAndCategory", ["event", "category"]),
 })
