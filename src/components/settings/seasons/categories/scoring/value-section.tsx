@@ -126,7 +126,7 @@ function FormulaField({
           <FieldError>{error}</FieldError>
         ) : (
           <Description>
-            Use measure names, numbers, + − × ÷ and parentheses. × and ÷ come before + and −.
+            Use measure names, numbers, + − × ÷, // (integer division), % (mod), round() ceil() floor() and parentheses. × ÷ // % come before + and −.
           </Description>
         )}
       </TextField>

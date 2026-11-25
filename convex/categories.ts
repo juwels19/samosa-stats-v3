@@ -4,6 +4,7 @@ import type { Id } from "./_generated/dataModel";
 import { getCurrentUser } from "./users";
 import { categoryValidator, seasonValidator } from "./lib/events/validators";
 import { findUnknownFields } from "./lib/scoring/field_paths";
+import { parseGlobalValueFormula } from "./lib/scoring/global_value";
 import { winnerSourceValidator } from "./lib/scoring/validators";
 import { winnerConfigSchema } from "./lib/scoring/winner_config";
 
@@ -136,6 +137,11 @@ export const setWinnerSource = mutation({
   args: {
     categoryId: v.id("categories"),
     winnerSource: winnerSourceValidator,
+    /**
+     * Global categories only: the value formula, for example
+     * `maxCategoryValue - minCategoryValue`. Empty removes it.
+     */
+    valueFormula: v.optional(v.string()),
   },
   returns: v.null(),
   async handler(ctx, args) {
@@ -150,8 +156,13 @@ export const setWinnerSource = mutation({
       throw new Error("Category not found.");
     }
 
+    const valuePatch =
+      args.valueFormula === undefined
+        ? {}
+        : { valueFormula: checkValueFormula(category.isGlobal, args.valueFormula) };
+
     if (args.winnerSource.type === "manual") {
-      await ctx.db.patch(args.categoryId, { winnerSource: { type: "manual" } });
+      await ctx.db.patch(args.categoryId, { winnerSource: { type: "manual" }, ...valuePatch });
       return null;
     }
 
@@ -180,10 +191,30 @@ export const setWinnerSource = mutation({
 
     await ctx.db.patch(args.categoryId, {
       winnerSource: { type: "config", config: parsed.data },
+      ...valuePatch,
     });
     return null;
   },
 });
+
+const MAX_FORMULA_LENGTH = 200;
+
+/** Checks a value formula. Saved as written, so the admin sees their own text again. */
+function checkValueFormula(isGlobal: boolean, formula: string): string | undefined {
+  if (!isGlobal) {
+    throw new Error("Only global categories have a value formula.");
+  }
+  const trimmed = formula.trim();
+  if (trimmed === "") return undefined;
+  if (trimmed.length > MAX_FORMULA_LENGTH) {
+    throw new Error(`The value formula must be ${MAX_FORMULA_LENGTH} characters or fewer.`);
+  }
+  const parsed = parseGlobalValueFormula(trimmed);
+  if (!parsed.ok) {
+    throw new Error(`The value formula is not valid: ${parsed.message}`);
+  }
+  return trimmed;
+}
 
 const MAX_TEXT_LENGTH = 150;
 const MAX_SCORING_LENGTH = 500;

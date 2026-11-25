@@ -53,7 +53,7 @@ export const configOutputSchema = z.object({
       .string()
       .nullable()
       .describe(
-        "When measure is null: a formula of measure names, numbers, + - * / and parentheses, for example (auto - teleop) / matches * 100.",
+        "When measure is null: a formula of measure names, numbers, + - * / // %, round() ceil() floor() and parentheses, for example (auto - teleop) / matches * 100.",
       ),
   }),
   select: z.object({

@@ -154,6 +154,16 @@ export default function CategoriesList() {
               ) : (
                 <p className="text-sm text-muted italic">No scoring description</p>
               )}
+              {category.isGlobal ? (
+                <p className="text-sm text-muted">
+                  Points:{" "}
+                  {category.valueFormula ? (
+                    <code className="text-foreground">{category.valueFormula}</code>
+                  ) : (
+                    <span className="text-warning">no formula yet</span>
+                  )}
+                </p>
+              ) : null}
               <div className="mt-auto flex items-center justify-between gap-3 pt-1">
                 <WinnerSourceChip winnerSource={category.winnerSource} />
                 <div className="flex items-center gap-2">

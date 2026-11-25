@@ -54,6 +54,30 @@ export default function ScoringCategoryCard({
 }
 
 function CategoryValue({ category }: { category: EventScoringCategory }) {
+  if (category.isGlobal) {
+    // Every submission gets a global category. Its value comes from its formula.
+    return (
+      <span
+        className={cn(
+          "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums",
+          category.hasValue
+            ? "bg-accent-soft text-accent-soft-foreground"
+            : "bg-warning-soft text-warning-soft-foreground",
+        )}
+        title={
+          category.valueFormula
+            ? `Every submission gets this category. Points: ${category.valueFormula}`
+            : "Every submission gets this category. Add a points formula on its Scoring page."
+        }
+      >
+        {category.hasValue
+          ? `${category.value} ${Math.abs(category.value) === 1 ? "pt" : "pts"}`
+          : "No value"}
+        <span className="font-normal">· global</span>
+      </span>
+    );
+  }
+
   return (
     <span
       className={cn(

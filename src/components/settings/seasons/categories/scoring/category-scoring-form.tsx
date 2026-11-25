@@ -8,6 +8,7 @@ import { Controller, useForm, useWatch } from "react-hook-form";
 import SettingsPageHeader from "@/components/settings/common/settings-page-header";
 import { api } from "../../../../../../convex/_generated/api";
 import type { Doc } from "../../../../../../convex/_generated/dataModel";
+import { parseGlobalValueFormula } from "../../../../../../convex/lib/scoring/global_value";
 import type { WinnerConfig } from "../../../../../../convex/lib/scoring/winner_config";
 import AiConfigPrompt, { type GenerationResult } from "./ai-config-prompt";
 import { AiMark, AiMarksProvider } from "./ai-marks";
@@ -24,6 +25,7 @@ import MeasuresSection from "./measures-section";
 import OptionSelect from "./option-select";
 import ScoringPreview from "./scoring-preview";
 import SelectRuleSection from "./select-rule-section";
+import ValueFormulaSection from "./value-formula-section";
 import ValueSection from "./value-section";
 import WinnerModeField from "./winner-mode-field";
 
@@ -60,6 +62,12 @@ export default function CategoryScoringForm({
   const [apiCheck, setApiCheck] = useState<{ key: string; ok: boolean } | null>(
     null,
   );
+  // Global categories only. Empty means no value yet.
+  const [valueFormula, setValueFormula] = useState(category.valueFormula ?? "");
+  const parsedFormula =
+    valueFormula.trim() === "" ? null : parseGlobalValueFormula(valueFormula);
+  const formulaError =
+    parsedFormula !== null && !parsedFormula.ok ? parsedFormula.message : null;
 
   // An edit to a marked field clears its mark.
   useEffect(() => {
@@ -129,6 +137,7 @@ export default function CategoryScoringForm({
         winnerSource: isManual
           ? { type: "manual" }
           : { type: "config", config: check.config },
+        ...(category.isGlobal ? { valueFormula } : {}),
       });
       form.reset(values);
       toast.success("Scoring saved", { description: category.text });
@@ -151,7 +160,9 @@ export default function CategoryScoringForm({
             size="lg"
             className="w-full sm:w-auto"
             isPending={isSaving}
-            isDisabled={!isManual && (!check.ok || apiIssue !== null)}
+            isDisabled={
+              formulaError !== null || (!isManual && (!check.ok || apiIssue !== null))
+            }
             onPress={() => void save()}
           >
             {({ isPending }) => (
@@ -171,6 +182,14 @@ export default function CategoryScoringForm({
           <WinnerModeField value={field.value} onChange={field.onChange} />
         )}
       />
+
+      {category.isGlobal ? (
+        <ValueFormulaSection
+          value={valueFormula}
+          error={formulaError}
+          onChange={setValueFormula}
+        />
+      ) : null}
 
       {isManual ? null : (
         <AiMarksProvider value={marks}>

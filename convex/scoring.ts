@@ -11,6 +11,7 @@ import {
 import { getDataEventCode } from "./lib/events/data";
 import { categoryValidator, eventStatusValidator } from "./lib/events/validators";
 import { getCategoryValues } from "./lib/scoring/category_values";
+import { getGlobalValueInputs } from "./lib/scoring/global_value";
 import {
   checkManualWinners,
   findEventCategoryWinners,
@@ -41,6 +42,7 @@ import {
   getResultsStatus,
   resultMatchesSource,
   upsertCategoryWinners,
+  getGlobalCategoryValues,
 } from "./lib/scoring/event_db";
 import { getCurrentUser } from "./users";
 
@@ -104,6 +106,8 @@ const eventScoringCategoryValidator = v.object({
   /** Points for each winning picked team, with the current picks. */
   value: v.number(),
   isTop: v.boolean(),
+  /** Global categories only: false when the value formula is missing or gives no value. */
+  hasValue: v.boolean(),
   /** The current winners. Null when there are none yet. */
   result: v.union(categoryWinnerResultValidator, v.null()),
 });
@@ -162,9 +166,32 @@ export const getEventScoring = query({
       getResultsStatus(ctx, event._id),
     ]);
 
+    const categoryIds = new Set(categories.map((category) => category._id));
+    // A pick can hold a category the event no longer offers.
+    const submissions = await Promise.all(
+      picks.map(async (pick) => ({
+        categoryIds: pick.categories.filter((id) => categoryIds.has(id)),
+        teams: (
+          await ctx.db
+            .query("pickTeams")
+            .withIndex("byPick", (q) => q.eq("pick", pick._id))
+            .collect()
+        ).map((row) => row.team),
+      })),
+    );
+    const globalValues = getGlobalCategoryValues(
+      categories,
+      getGlobalValueInputs({
+        chosenCategoryIds: categories
+          .filter((category) => !category.isGlobal)
+          .map((category) => category._id),
+        submissions,
+      }),
+    );
     const { values } = getCategoryValues({
-      categoryIds: categories.map((category) => category._id),
-      submissions: picks.map((pick) => ({ categoryIds: pick.categories })),
+      categoryIds: [...categoryIds],
+      submissions,
+      globalPoints: globalValues,
     });
     const resultsByCategory = new Map(
       winnerRows.map((row) => [row.category, row.result]),
@@ -191,6 +218,7 @@ export const getEventScoring = query({
         return {
           ...category,
           ...value,
+          hasValue: !category.isGlobal || globalValues.get(category._id) !== null,
           result: resultMatchesSource(result, category.winnerSource)
             ? result
             : null,

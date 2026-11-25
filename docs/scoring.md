@@ -6,6 +6,8 @@ This document gives the rules that score pick submissions for an event and turn 
 
 A player picks a set of categories and a set of teams for an event. The player does not pick a team to win a category. The categories and teams together make the player's point pool.
 
+Every submission also gets the event's global categories. Players never choose them. See [Global categories](#global-categories).
+
 Random submissions are scored with the same rules as manual submissions.
 
 ## Definitions
@@ -14,11 +16,11 @@ All counts include all submissions for the event, random submissions included.
 
 | Term | Meaning |
 |---|---|
-| `picks(c)` | The number of submissions that picked category `c` |
+| `picks(c)` | The number of submissions that picked category `c`. Only chosen (not global) categories have picks |
 | `picks(t)` | The number of submissions that picked team `t` |
 | `baseValue(c)` | `picks(c) + 1` |
-| `topCatValue` | The highest `baseValue(c)` at the event |
-| `topCats` | All categories where `baseValue(c) = topCatValue`. If categories tie, all of them are in `topCats` |
+| `topCatValue` | The highest `baseValue(c)` of the chosen categories at the event. 0 when the event has no chosen categories |
+| `topCats` | All chosen categories where `baseValue(c) = topCatValue`. If categories tie, all of them are in `topCats` |
 | `value(c)` | The points category `c` gives. See [Category value](#category-value) |
 | `topTeamValue` | The highest `picks(t)` at the event |
 | `winners(c)` | The teams that won category `c`. A category has one or more winners |
@@ -74,9 +76,19 @@ A team can't win when it is outside `teams`, when a measure has no data for it, 
 
 #### Formulas
 
-In the builder, a formula is text, for example `(auto - teleop) / matches * 100`. It can use measure names, numbers, `+ - * /` (or `× ÷ −`) and parentheses. `*` and `/` come before `+` and `-`. The parser is in `convex/lib/scoring/formula.ts`.
+In the builder, a formula is text, for example `(auto - teleop) / matches * 100`. It can use measure names, numbers, `+ - * /` (or `× ÷ −`), `//`, `%`, `round()`, `ceil()`, `floor()` and parentheses. `* / // %` come before `+` and `-`. The parser is in `convex/lib/scoring/formula.ts`.
 
-A formula is stored as a tree of operations. Each operation has `op` (`add`, `subtract`, `multiply` or `divide`), `left` and `right`. Each side is a measure name, a number or another operation. A config from before formulas, with one operation on 2 measures or numbers, is a short formula and still works.
+| Part | Meaning |
+|---|---|
+| `a // b` | Integer division. Divides, then rounds down: `7 // 2` is 3 and `-7 // 2` is -4 |
+| `a % b` | Mod. The remainder of `a // b`, with the sign of `b`: `7 % 3` is 1 and `-7 % 3` is 2. So `a = b * (a // b) + a % b` |
+| `round(x)` | Rounds to the nearest whole number. A half rounds up: `round(2.5)` is 3 and `round(-2.5)` is -2 |
+| `ceil(x)` | Rounds up: `ceil(2.1)` is 3 |
+| `floor(x)` | Rounds down: `floor(-2.1)` is -3 |
+
+`//` and `%` by zero give no value, the same as `/` by zero.
+
+A formula is stored as a tree of operations. Each operation has `op` (`add`, `subtract`, `multiply`, `divide`, `intDivide` or `mod`), `left` and `right`. A rounding has `fn` (`round`, `ceil` or `floor`) and `arg`. Each side or `arg` is a measure name, a number, an operation or a rounding. A config from before formulas, with one operation on 2 measures or numbers, is a short formula and still works.
 
 Example, "3rd highest ratio of auto points to total points":
 
@@ -130,6 +142,7 @@ A player's event score is the sum of these line items.
 | Line item | Amount | Applies |
 |---|---|---|
 | Category win | `+value(c)` | One time for each pair of a picked category `c` and a picked team in `winners(c)` |
+| Global category win | `+value(g)` | One time for each pair of a global category `g` and a picked team in `winners(g)`. Every submission gets every global category |
 | Award | `-topCatValue` | One time for each picked team that won the season's deduction award |
 | Least unique | `-topTeamValue` | Only to the least unique submission. See [Least unique deduction](#least-unique-deduction) |
 
@@ -144,6 +157,42 @@ All line items are cumulative. For example, a player picks 2 teams that both won
 | `c` is in `topCats` and 2 or more categories tie | `floor(baseValue(c) / n)`, where `n` is the number of categories in `topCats` |
 
 A player who picked the only top category and its winning teams gets 0 points from that category. The player can still get points from other categories.
+
+### Global categories
+
+A global category applies to every submission at the event. Players never choose it, so:
+
+- it has no `picks(c)` and is never in `topCats`;
+- it does not change `topCatValue`, so it does not change the award deduction;
+- the top category rule does not reduce it.
+
+Picks store the event's global category IDs with the chosen ones. Scoring ignores the stored global IDs and gives every submission every global category.
+
+Each global category has a points formula, set in "Points per winning team" on the category's Scoring page, under "How winners are found". It is there for automatic and manual categories, and is saved with Save scoring. It is not the same as a config's Value, which only ranks teams to find the winners.
+
+The formula is calculated at each event, so the points can be different at each event. A value with a fraction is rounded down. Each winning team in a submission gives the points, the same as a chosen category. Winners are found as for any other category: a config or an admin.
+
+A formula uses the same operations and rounding functions as a config formula (see [Formulas](#formulas)), with these event values and these functions of the submissions:
+
+| Name | Meaning |
+|---|---|
+| `maxCategoryValue` | The highest `baseValue(c)` of the chosen categories. Same as `topCatValue` |
+| `minCategoryValue` | The lowest `baseValue(c)` of the chosen categories |
+| `topTeamValue` | The highest `picks(t)` |
+| `submissions` | The number of submissions |
+| `categoryValue(n)` | The `baseValue(c)` of the nth most picked chosen category. `categoryValue(1)` is `maxCategoryValue` |
+| `teamPicks(n)` | The `picks(t)` of the nth most picked team. Only teams with picks count |
+
+`n` starts at 1, the highest. Tied items each take a position, so with team picks 3, 3, 2, `teamPicks(2)` is 3 and `teamPicks(3)` is 2. A position past the end of its list gives no value.
+
+Examples:
+
+- "Lose a rematch": `maxCategoryValue - minCategoryValue`. With base values 5, 3 and 1, the points are 4.
+- The picks of the 6th most chosen team: `teamPicks(6)`.
+
+A global category can have no winners. It then gives no points and does not block Finalize.
+
+A global category with no formula, or a formula that divides by zero or reads past the end of a list, has no value. It gives 0 in draft scores. Finalize is refused only when the category has winners. The code is in `convex/lib/scoring/global_value.ts`. To add an event value, add it to `GLOBAL_VALUE_VARIABLES` (or `GLOBAL_VALUE_FUNCTIONS`) and `getGlobalValueInputs`.
 
 ### Deduction award
 
@@ -166,8 +215,8 @@ Event results are **draft** until an admin finalizes them on the event's Scores 
 
 - While draft, scores are calculated live from the current picks, winners and awards (`convex/lib/scoring/event_scores.ts`).
 - **Calculate winners** also saves all of the event's TBA awards. The award deduction uses the winners of the season's deduction award from these.
-- **Finalize** saves each submission's score and line items in `eventScores`, and the values used in `eventResults.final`. Winners are then locked: manual winners and Calculate winners are refused.
-- Finalize is refused until the event is COMPLETE, the season has a deduction award, the awards are loaded and every category has winners.
+- **Finalize** saves each submission's score, line items and chosen categories in `eventScores`, and the values used in `eventResults.final`. Winners are then locked: manual winners and Calculate winners are refused.
+- Finalize is refused until the event is COMPLETE, the season has a deduction award, the awards are loaded, every chosen (not global) category has winners and every global category that has winners has a points formula that gives a value.
 - **Reopen** deletes the saved scores and makes the results draft again.
 
 A change to the deduction award does not change a final event, because its scores are saved.

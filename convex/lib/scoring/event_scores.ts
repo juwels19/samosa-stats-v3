@@ -32,8 +32,9 @@ export function calculateEventScores<SubmissionId extends string, CategoryId ext
   submissions,
   winners,
   awardWinners,
+  globalPoints = new Map(),
 }: {
-  /** All categories offered at the event. */
+  /** All categories offered at the event, global ones included. */
   categoryIds: readonly CategoryId[];
   submissions: readonly {
     id: SubmissionId;
@@ -44,8 +45,11 @@ export function calculateEventScores<SubmissionId extends string, CategoryId ext
   winners: ReadonlyMap<CategoryId, readonly number[]>;
   /** Teams that won the season's deduction award at the event. */
   awardWinners: readonly number[];
+  /** Each global category's value at this event. Every submission gets these categories. */
+  globalPoints?: ReadonlyMap<CategoryId, number | null>;
 }): EventScores<SubmissionId, CategoryId> {
-  const { values, topCatValue } = getCategoryValues({ categoryIds, submissions });
+  const { values, topCatValue } = getCategoryValues({ categoryIds, submissions, globalPoints });
+  const globalIds = categoryIds.filter((categoryId) => globalPoints.has(categoryId));
 
   const teamPicks = new Map<number, number>();
   for (const submission of submissions) {
@@ -60,7 +64,8 @@ export function calculateEventScores<SubmissionId extends string, CategoryId ext
     const teams = [...new Set(submission.teams)];
     const lineItems: ScoreLineItem<CategoryId>[] = [];
 
-    for (const category of new Set(submission.categoryIds)) {
+    // Every submission gets the global categories, whether or not the pick stores them.
+    for (const category of new Set([...submission.categoryIds, ...globalIds])) {
       const categoryWinners = new Set(winners.get(category) ?? []);
       const amount = values.get(category)?.value ?? 0;
       for (const team of teams) {

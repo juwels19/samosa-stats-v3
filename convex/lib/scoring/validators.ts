@@ -105,6 +105,8 @@ export const eventScoreFields = {
   /** The name shown for the submission when the results were finalized. */
   name: v.string(),
   teams: v.array(v.number()),
+  /** The categories the player chose. Not set on scores saved before this field existed. */
+  categories: v.optional(v.array(v.id("categories"))),
   total: v.number(),
   uniqueness: v.number(),
   lineItems: v.array(scoreLineItemValidator),

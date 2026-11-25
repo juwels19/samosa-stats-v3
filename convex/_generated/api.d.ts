@@ -45,6 +45,7 @@ import type * as lib_scoring_generate_generate from "../lib/scoring/generate/gen
 import type * as lib_scoring_generate_output from "../lib/scoring/generate/output.js";
 import type * as lib_scoring_generate_prompt from "../lib/scoring/generate/prompt.js";
 import type * as lib_scoring_generate_tools from "../lib/scoring/generate/tools.js";
+import type * as lib_scoring_global_value from "../lib/scoring/global_value.js";
 import type * as lib_scoring_run_config from "../lib/scoring/run_config.js";
 import type * as lib_scoring_sources_api_source from "../lib/scoring/sources/api_source.js";
 import type * as lib_scoring_sources_event_data from "../lib/scoring/sources/event_data.js";
@@ -105,6 +106,7 @@ declare const fullApi: ApiFromModules<{
   "lib/scoring/generate/output": typeof lib_scoring_generate_output;
   "lib/scoring/generate/prompt": typeof lib_scoring_generate_prompt;
   "lib/scoring/generate/tools": typeof lib_scoring_generate_tools;
+  "lib/scoring/global_value": typeof lib_scoring_global_value;
   "lib/scoring/run_config": typeof lib_scoring_run_config;
   "lib/scoring/sources/api_source": typeof lib_scoring_sources_api_source;
   "lib/scoring/sources/event_data": typeof lib_scoring_sources_event_data;

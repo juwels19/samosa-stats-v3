@@ -48,6 +48,50 @@ describe("calculateEventScores", () => {
   });
 });
 
+describe("calculateEventScores with global categories", () => {
+  // a has 1 pick (base 2, the only top: value 0), b has 0 picks (base 1).
+  // g is global with value 5. p1's pick stores g, p2's does not.
+  const result = calculateEventScores({
+    categoryIds: ["a", "b", "g"],
+    submissions: [
+      { id: "p1", categoryIds: ["g", "a"], teams: [1, 2] },
+      { id: "p2", categoryIds: [], teams: [3, 4] },
+    ],
+    winners: new Map([
+      ["a", [1]],
+      ["g", [2, 3]],
+    ]),
+    awardWinners: [],
+    globalPoints: new Map([["g", 5]]),
+  });
+  const byId = new Map(result.scores.map((score) => [score.submission, score]));
+
+  it("gives every submission the global category", () => {
+    expect(byId.get("p1")?.lineItems).toContainEqual({
+      type: "category",
+      category: "g",
+      team: 2,
+      amount: 5,
+    });
+    expect(byId.get("p2")?.lineItems).toContainEqual({
+      type: "category",
+      category: "g",
+      team: 3,
+      amount: 5,
+    });
+  });
+
+  it("does not let the global category change topCatValue", () => {
+    expect(result.topCatValue).toBe(2);
+    expect(byId.get("p1")?.lineItems).toContainEqual({
+      type: "category",
+      category: "a",
+      team: 1,
+      amount: 0,
+    });
+  });
+});
+
 describe("findLeastUnique", () => {
   it("picks the highest uniqueness", () => {
     expect(

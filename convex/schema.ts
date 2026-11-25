@@ -92,6 +92,8 @@ export default defineSchema({
     isGlobal: v.boolean(),
     /** Not set means the category has no scoring setup yet. */
     winnerSource: v.optional(winnerSourceValidator),
+    /** Global categories only: the formula of event values that gives the category's value. */
+    valueFormula: v.optional(v.string()),
   })
     .index("bySeason", ["season"])
     .index("bySeasonAndIsGlobal", ["season", "isGlobal"]),

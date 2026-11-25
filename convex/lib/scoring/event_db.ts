@@ -1,5 +1,6 @@
 import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
+import { evaluateGlobalValue, type GlobalValueInputs } from "./global_value";
 
 /** Database helpers that event scoring and event results share. */
 
@@ -84,4 +85,20 @@ export async function assertResultsNotFinal(ctx: QueryCtx, eventId: Id<"events">
   if ((await getResultsStatus(ctx, eventId)) === "final") {
     throw new Error("The results are final. Reopen them to change winners.");
   }
+}
+
+/**
+ * Each global category's value at an event, keyed by category: its value
+ * formula calculated with the event's values, rounded down. Null when the
+ * category has no formula or the formula gives no value.
+ */
+export function getGlobalCategoryValues(
+  categories: readonly Doc<"categories">[],
+  inputs: GlobalValueInputs,
+): Map<Id<"categories">, number | null> {
+  return new Map(
+    categories
+      .filter((category) => category.isGlobal)
+      .map((category) => [category._id, evaluateGlobalValue(category.valueFormula, inputs)]),
+  );
 }

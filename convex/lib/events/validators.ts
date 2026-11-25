@@ -20,6 +20,7 @@ export const categoryValidator = v.object({
   season: v.id("seasons"),
   isGlobal: v.boolean(),
   winnerSource: v.optional(winnerSourceValidator),
+  valueFormula: v.optional(v.string()),
 });
 
 export const eventStatusValidator = v.union(

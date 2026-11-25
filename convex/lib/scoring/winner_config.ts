@@ -1,6 +1,6 @@
 import * as z from "zod";
 
-import { getReferencedMeasures, type ValueExpression } from "./formula";
+import { getReferencedMeasures, ROUNDING_FUNCTIONS, type ValueExpression } from "./formula";
 
 import {
   apiSourceSpecSchema,
@@ -94,7 +94,7 @@ const measureSchema = z.union([typedMeasureSchema, apiMeasureSchema]);
  * another operation, so a formula can have many parts. See `formula.ts`.
  */
 const calculationSchema = z.object({
-  op: z.enum(["add", "subtract", "multiply", "divide"]),
+  op: z.enum(["add", "subtract", "multiply", "divide", "intDivide", "mod"]),
   get left(): z.ZodType<ValueExpression> {
     return expressionSchema;
   },
@@ -103,16 +103,26 @@ const calculationSchema = z.object({
   },
 });
 
+/** round(), ceil() or floor() of an expression. */
+const roundingSchema = z.object({
+  fn: z.enum(ROUNDING_FUNCTIONS),
+  get arg(): z.ZodType<ValueExpression> {
+    return expressionSchema;
+  },
+});
+
 const expressionSchema: z.ZodType<ValueExpression> = z.union([
   z.string().trim().min(1, { message: "Choose a measure for each part of the formula." }),
   z.number(),
   calculationSchema,
+  roundingSchema,
 ]);
 
 /** One measure name, or a formula of measures and numbers. */
 const valueSchema = z.union([
   z.string().trim().min(1, { message: "Choose the measure to compare teams by." }),
   calculationSchema,
+  roundingSchema,
 ]);
 
 const orderSchema = z.enum(["desc", "asc"]);

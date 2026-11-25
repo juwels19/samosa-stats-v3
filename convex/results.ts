@@ -5,9 +5,11 @@ import { internalMutation, mutation, query, type QueryCtx } from "./_generated/s
 import {
   getEventCategories,
   getEventResultsRow,
+  getGlobalCategoryValues,
   resultMatchesSource,
 } from "./lib/scoring/event_db";
 import { calculateEventScores } from "./lib/scoring/event_scores";
+import { getGlobalValueInputs } from "./lib/scoring/global_value";
 import { getTbaAwardType } from "./lib/scoring/sources/tba_award_types";
 import {
   resultsStatusValidator,
@@ -27,6 +29,8 @@ const scoreValidator = v.object({
   name: v.string(),
   isMock: v.boolean(),
   teams: v.array(v.number()),
+  /** The categories the player chose. Global categories are not in this list. */
+  categories: v.array(v.id("categories")),
   total: v.number(),
   uniqueness: v.number(),
   lineItems: v.array(scoreLineItemValidator),
@@ -38,6 +42,7 @@ type EventScoreRow = {
   name: string;
   isMock: boolean;
   teams: number[];
+  categories: Id<"categories">[];
   total: number;
   uniqueness: number;
   lineItems: Doc<"eventScores">["lineItems"];
@@ -115,16 +120,35 @@ async function calculateDraftResults(ctx: QueryCtx, event: Doc<"events">) {
     }),
   );
 
+  const globalIds = new Set(
+    categories.filter((category) => category.isGlobal).map((category) => category._id),
+  );
   // A pick can hold a category the event no longer offers. It gives no points.
+  const chosenCategories = (pick: Doc<"picks">) =>
+    pick.categories.filter((id) => categoriesById.has(id) && !globalIds.has(id));
+  const globalValues = getGlobalCategoryValues(
+    categories,
+    getGlobalValueInputs({
+      chosenCategoryIds: categories
+        .filter((category) => !category.isGlobal)
+        .map((category) => category._id),
+      submissions: submissions.map(({ pick, teams }) => ({
+        categoryIds: chosenCategories(pick),
+        teams,
+      })),
+    }),
+  );
+
   const result = calculateEventScores({
     categoryIds: categories.map((category) => category._id),
     submissions: submissions.map(({ pick, teams }) => ({
       id: pick._id,
-      categoryIds: pick.categories.filter((id) => categoriesById.has(id)),
+      categoryIds: chosenCategories(pick),
       teams,
     })),
     winners,
     awardWinners,
+    globalPoints: globalValues,
   });
   const scoreByPick = new Map(result.scores.map((score) => [score.submission, score]));
 
@@ -136,13 +160,24 @@ async function calculateDraftResults(ctx: QueryCtx, event: Doc<"events">) {
       name,
       isMock,
       teams,
+      categories: chosenCategories(pick),
       total: score?.total ?? 0,
       uniqueness: score?.uniqueness ?? 0,
       lineItems: score?.lineItems ?? [],
     };
   });
 
-  const missingWinners = categories.filter((category) => !winners.has(category._id));
+  // A global category can have no winners: it then gives no points. Its
+  // points formula only matters when it has winners.
+  const missingWinners = categories.filter(
+    (category) => !category.isGlobal && !winners.has(category._id),
+  );
+  const missingValues = categories.filter(
+    (category) =>
+      category.isGlobal &&
+      (winners.get(category._id)?.length ?? 0) > 0 &&
+      globalValues.get(category._id) === null,
+  );
   const blockers = [
     ...(event.status === "COMPLETE" ? [] : ["The event is not complete yet."]),
     ...(deductionAwardType === null
@@ -153,6 +188,13 @@ async function calculateDraftResults(ctx: QueryCtx, event: Doc<"events">) {
       ? []
       : [
           `${missingWinners.length} ${missingWinners.length === 1 ? "category has" : "categories have"} no winners: ${missingWinners
+            .map((category) => category.text)
+            .join(", ")}.`,
+        ]),
+    ...(missingValues.length === 0
+      ? []
+      : [
+          `${missingValues.length} global ${missingValues.length === 1 ? "category has" : "categories have"} winners but no points. Add a points formula on each category's Scoring page: ${missingValues
             .map((category) => category.text)
             .join(", ")}.`,
         ]),
@@ -205,7 +247,15 @@ export const getEventResults = query({
         .query("eventScores")
         .withIndex("byEvent", (q) => q.eq("event", event._id))
         .collect();
-      const users = await Promise.all(saved.map(async (row) => await ctx.db.get(row.user)));
+      const [users, picks] = await Promise.all([
+        Promise.all(saved.map(async (row) => await ctx.db.get(row.user))),
+        Promise.all(saved.map(async (row) => await ctx.db.get(row.pick))),
+      ]);
+      const globalIds = new Set(
+        (await getEventCategories(ctx, event))
+          .filter((category) => category.isGlobal)
+          .map((category) => category._id),
+      );
       return {
         status: "final" as const,
         finalizedAt: resultsRow.final.finalizedAt,
@@ -221,6 +271,10 @@ export const getEventResults = query({
             name: row.name,
             isMock: users[index]?.isMock === true,
             teams: row.teams,
+            // Scores saved before `categories` existed fall back to the pick.
+            categories:
+              row.categories ??
+              (picks[index]?.categories ?? []).filter((id) => !globalIds.has(id)),
             total: row.total,
             uniqueness: row.uniqueness,
             lineItems: row.lineItems,
@@ -244,6 +298,7 @@ export const getEventResults = query({
         name: score.name,
         isMock: score.isMock,
         teams: score.teams,
+        categories: score.categories,
         total: score.total,
         uniqueness: score.uniqueness,
         lineItems: score.lineItems,
@@ -279,6 +334,7 @@ export const finalize = mutation({
         user: score.user,
         name: score.name,
         teams: score.teams,
+        categories: score.categories,
         total: score.total,
         uniqueness: score.uniqueness,
         lineItems: score.lineItems,

@@ -18,12 +18,14 @@ describe("getCategoryValues", () => {
       baseValue: 3,
       value: 3,
       isTop: false,
+      isGlobal: false,
     });
     expect(result.values.get("c")).toEqual({
       picks: 0,
       baseValue: 1,
       value: 1,
       isTop: false,
+      isGlobal: false,
     });
   });
 
@@ -38,6 +40,7 @@ describe("getCategoryValues", () => {
       baseValue: 4,
       value: 0,
       isTop: true,
+      isGlobal: false,
     });
     expect(result.topCatValue).toBe(4);
     expect(result.topCategoryIds).toEqual(["a"]);
@@ -94,6 +97,52 @@ describe("getCategoryValues", () => {
 
   it("returns no top categories when the event has no categories", () => {
     const result = getCategoryValues({ categoryIds: [], submissions: [] });
+
+    expect(result.topCatValue).toBe(0);
+    expect(result.topCategoryIds).toEqual([]);
+  });
+
+  it("keeps global categories out of picks and the top category rule", () => {
+    // Picks store the global category g. a has 2 picks, b has 1.
+    const result = getCategoryValues({
+      categoryIds: ["a", "b", "g"],
+      submissions: submissions(["g", "a", "b"], ["g", "a"]),
+      globalPoints: new Map([["g", 7]]),
+    });
+
+    expect(result.topCatValue).toBe(3);
+    expect(result.topCategoryIds).toEqual(["a"]);
+    expect(result.values.get("g")).toEqual({
+      picks: 2,
+      baseValue: 7,
+      value: 7,
+      isTop: false,
+      isGlobal: true,
+    });
+  });
+
+  it("rounds a global value down and gives 0 when it has none", () => {
+    const result = getCategoryValues({
+      categoryIds: ["a", "g", "h", "n"],
+      submissions: submissions(["a"]),
+      globalPoints: new Map<string, number | null>([
+        ["g", 3.5],
+        ["h", -3.5],
+        ["n", null],
+      ]),
+    });
+
+    expect(result.values.get("g")?.value).toBe(3);
+    expect(result.values.get("h")?.value).toBe(-4);
+    expect(result.values.get("n")?.value).toBe(0);
+  });
+
+  it("gives topCatValue 0 when the event has only global categories", () => {
+    const result = getCategoryValues({
+      categoryIds: ["g"],
+      submissions: submissions(["g"]),
+      globalPoints: new Map([["g", 2]]),
+    });
 
     expect(result.topCatValue).toBe(0);
     expect(result.topCategoryIds).toEqual([]);
