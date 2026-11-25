@@ -1,12 +1,14 @@
 import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
+import type { Doc } from "./_generated/dataModel";
 import {
   action,
   internalMutation,
   internalQuery,
   mutation,
   query,
+  type QueryCtx,
 } from "./_generated/server";
 import { getDataEventCode } from "./lib/events/data";
 import { categoryValidator, eventStatusValidator } from "./lib/events/validators";
@@ -25,11 +27,15 @@ import {
   type GenerationResult,
 } from "./lib/scoring/generate/generate";
 import { runConfigOnEvent } from "./lib/scoring/run_config";
+import { getScriptSets } from "./lib/scoring/script/contract";
+import { findLeastUnique, getUniqueness } from "./lib/scoring/event_scores";
 import {
   winnerConfigSchema,
 } from "./lib/scoring/winner_config";
 import {
   apiCheckValidator,
+  categoryPointsResultValidator,
+  teamPointsValidator,
   categoryWinnerResultValidator,
   resultsStatusValidator,
   teamWinnerResultValidator,
@@ -43,6 +49,8 @@ import {
   resultMatchesSource,
   upsertCategoryWinners,
   getGlobalCategoryValues,
+  getCategoryPointsRows,
+  getScriptPoints,
 } from "./lib/scoring/event_db";
 import { getCurrentUser } from "./users";
 
@@ -110,7 +118,40 @@ const eventScoringCategoryValidator = v.object({
   hasValue: v.boolean(),
   /** The current winners. Null when there are none yet. */
   result: v.union(categoryWinnerResultValidator, v.null()),
+  /** Global categories with script points only: the last script points. */
+  pointsResult: v.union(categoryPointsResultValidator, v.null()),
+  /** Least unique categories only: the submissions that win it now. */
+  leastUnique: v.union(
+    v.array(v.object({ name: v.string(), uniqueness: v.number() })),
+    v.null(),
+  ),
 });
+
+/** The least unique submissions at an event, with their names. */
+async function getLeastUniqueSubmissions(ctx: QueryCtx, picks: readonly Doc<"picks">[]) {
+  const submissions = await Promise.all(
+    picks.map(async (pick) => {
+      const [user, pickTeams] = await Promise.all([
+        ctx.db.get(pick.user),
+        ctx.db.query("pickTeams").withIndex("byPick", (q) => q.eq("pick", pick._id)).collect(),
+      ]);
+      const teams = await Promise.all(pickTeams.map((row) => ctx.db.get(row.team)));
+      return {
+        id: pick._id,
+        name:
+          pick.displayName?.trim() ||
+          (user === null ? "Unknown player" : `${user.firstName} ${user.lastName}`.trim()),
+        teams: teams.filter((team) => team !== null).map((team) => Number(team.number)),
+      };
+    }),
+  );
+  const uniqueness = getUniqueness(submissions);
+  const byId = new Map(uniqueness.map((row) => [row.submission, row.uniqueness]));
+  const winners = new Set(findLeastUnique(uniqueness));
+  return submissions
+    .filter((submission) => winners.has(submission.id))
+    .map((submission) => ({ name: submission.name, uniqueness: byId.get(submission.id) ?? 0 }));
+}
 
 /**
  * The categories at an event with their current value and winners, for the
@@ -152,7 +193,7 @@ export const getEventScoring = query({
       throw new Error("The event's season was not found.");
     }
 
-    const [categories, picks, winnerRows, teams, resultsStatus] = await Promise.all([
+    const [categories, picks, winnerRows, teams, resultsStatus, pointsRows] = await Promise.all([
       getEventCategories(ctx, event),
       ctx.db
         .query("picks")
@@ -164,6 +205,7 @@ export const getEventScoring = query({
         .collect(),
       getEventTeams(ctx, event._id),
       getResultsStatus(ctx, event._id),
+      getCategoryPointsRows(ctx, event._id),
     ]);
 
     const categoryIds = new Set(categories.map((category) => category._id));
@@ -179,6 +221,11 @@ export const getEventScoring = query({
         ).map((row) => row.team),
       })),
     );
+    const leastUnique = categories.some(
+      (category) => category.winnerSource?.type === "leastUnique",
+    )
+      ? await getLeastUniqueSubmissions(ctx, picks)
+      : [];
     const globalValues = getGlobalCategoryValues(
       categories,
       getGlobalValueInputs({
@@ -187,6 +234,7 @@ export const getEventScoring = query({
           .map((category) => category._id),
         submissions,
       }),
+      getScriptPoints(pointsRows),
     );
     const { values } = getCategoryValues({
       categoryIds: [...categoryIds],
@@ -222,6 +270,11 @@ export const getEventScoring = query({
           result: resultMatchesSource(result, category.winnerSource)
             ? result
             : null,
+          pointsResult:
+            category.isGlobal && category.pointsSource === "script"
+              ? (pointsRows.get(category._id) ?? null)
+              : null,
+          leastUnique: category.winnerSource?.type === "leastUnique" ? leastUnique : null,
         };
       }),
     };
@@ -239,6 +292,8 @@ export const getCalculationInput = internalQuery({
     categories: v.array(
       v.object({ categoryId: v.id("categories"), config: v.any() }),
     ),
+    /** The number of categories whose winners or points come from a script. */
+    scriptCount: v.number(),
   }),
   handler: async (ctx, args) => {
     const currentUser = await getCurrentUser(ctx);
@@ -268,6 +323,7 @@ export const getCalculationInput = internalQuery({
           ? [{ categoryId: category._id, config: category.winnerSource.config }]
           : [],
       ),
+      scriptCount: categories.filter((category) => getScriptSets(category) !== null).length,
     };
   },
 });
@@ -376,36 +432,45 @@ export const calculateEventWinners = action({
         ? (sourceRows.failures.get("tba.awards") ?? "The awards could not be loaded.")
         : null;
 
-    if (input.categories.length === 0) {
-      return { calculated: 0, errors: 0, awardsError };
-    }
-
     const outcomes = findEventCategoryWinners({
       categories: input.categories,
       teams: input.teams,
       sourceRows: { ...sourceRows, api: apiRows.rows, apiFailures: apiRows.failures },
     });
+    if (outcomes.length > 0) {
+      await ctx.runMutation(internal.scoring.saveCalculatedWinners, {
+        eventId: args.eventId,
+        calculatedAt: Date.now(),
+        outcomes,
+      });
+    }
+    const configErrors = outcomes.filter((outcome) => outcome.type === "error").length;
 
-    await ctx.runMutation(internal.scoring.saveCalculatedWinners, {
-      eventId: args.eventId,
-      calculatedAt: Date.now(),
-      outcomes,
-    });
+    // Scripts run after the configs and awards are saved, so they can read them.
+    const scripts =
+      input.scriptCount === 0
+        ? { calculated: 0, errors: 0 }
+        : await ctx.runAction(internal.scoringScripts.runEventScripts, { eventId: args.eventId });
 
-    const errors = outcomes.filter((outcome) => outcome.type === "error");
-    return { calculated: outcomes.length - errors.length, errors: errors.length, awardsError };
+    return {
+      calculated: outcomes.length - configErrors + scripts.calculated,
+      errors: configErrors + scripts.errors,
+      awardsError,
+    };
   },
 });
 
 /**
  * Sets the winners of a manual category at an event. An empty list removes
- * the winners.
+ * the winners. A category whose points source is "manual" also needs each
+ * winner's points.
  */
 export const setManualWinners = mutation({
   args: {
     eventId: v.id("events"),
     categoryId: v.id("categories"),
     winners: v.array(v.number()),
+    teamPoints: v.optional(teamPointsValidator),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -443,15 +508,39 @@ export const setManualWinners = mutation({
       return null;
     }
 
+    const usesTeamPoints = category.isGlobal && category.pointsSource === "manual";
+    const teamPoints = usesTeamPoints ? checkTeamPoints(winners, args.teamPoints ?? []) : undefined;
+
     await upsertCategoryWinners(ctx, event._id, category._id, {
       type: "manual",
       winners,
+      ...(teamPoints === undefined ? {} : { teamPoints }),
       updatedBy: currentUser._id,
       updatedAt: Date.now(),
     });
     return null;
   },
 });
+
+const MAX_TEAM_POINTS = 1000;
+
+/** Each winner needs whole-number points. Points for a team that did not win are dropped. */
+function checkTeamPoints(
+  winners: readonly number[],
+  teamPoints: readonly { team: number; points: number }[],
+) {
+  const byTeam = new Map(teamPoints.map((row) => [row.team, row.points]));
+  return winners.map((team) => {
+    const points = byTeam.get(team);
+    if (points === undefined) {
+      throw new Error(`Set the points of team ${team}.`);
+    }
+    if (!Number.isInteger(points) || Math.abs(points) > MAX_TEAM_POINTS) {
+      throw new Error(`Team ${team}'s points must be a whole number from -${MAX_TEAM_POINTS} to ${MAX_TEAM_POINTS}.`);
+    }
+    return { team, points };
+  });
+}
 
 export const getGenerationInput = internalQuery({
   args: { categoryId: v.id("categories") },

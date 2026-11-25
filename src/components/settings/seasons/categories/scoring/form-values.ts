@@ -58,7 +58,7 @@ const EMPTY_API = {
 >;
 
 export type ScoringFormValues = {
-  mode: "manual" | "config";
+  mode: WinnerMode;
   teams: TeamScope;
   matches: MatchScope;
   measures: MeasureFormValues[];
@@ -104,15 +104,19 @@ export const DEFAULT_FORM_VALUES: ScoringFormValues = {
   selectValue: "",
 };
 
+export type WinnerMode = "config" | "script" | "leastUnique" | "manual";
+
 type WinnerSource =
-  { type: "manual" } | { type: "config"; config: unknown } | undefined;
+  | { type: "manual" | "script" | "leastUnique" }
+  | { type: "config"; config: unknown }
+  | undefined;
 
 export function toFormValues(winnerSource: WinnerSource): ScoringFormValues {
   if (winnerSource === undefined) {
     return DEFAULT_FORM_VALUES;
   }
-  if (winnerSource.type === "manual") {
-    return { ...DEFAULT_FORM_VALUES, mode: "manual" };
+  if (winnerSource.type !== "config") {
+    return { ...DEFAULT_FORM_VALUES, mode: winnerSource.type };
   }
 
   const parsed = winnerConfigSchema.safeParse(winnerSource.config);

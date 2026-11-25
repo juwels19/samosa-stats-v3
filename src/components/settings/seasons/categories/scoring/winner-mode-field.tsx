@@ -1,30 +1,43 @@
 "use client";
 
-import { Label, Radio, RadioGroup } from "@heroui/react";
+import { Radio, RadioGroup } from "@heroui/react";
 
-import { WINNER_MODE_OPTIONS } from "./constants";
+import type { Option } from "./constants";
+
+const GRID_COLUMNS: Record<number, string> = {
+  2: "grid gap-2 sm:grid-cols-2",
+  3: "grid gap-2 sm:grid-cols-3",
+  4: "grid gap-2 sm:grid-cols-2 lg:grid-cols-4",
+};
 
 /**
- * Chooses between automatic winners from a config and manual winners. The
- * whole card is the clickable `Radio.Content`, so a tap anywhere selects it.
+ * Cards to choose one option, for example how winners are found. The whole
+ * card is the clickable `Radio.Content`, so a tap anywhere selects it.
  */
-export default function WinnerModeField({
+export default function WinnerModeField<Value extends string>({
+  label,
+  options,
   value,
   onChange,
 }: {
-  value: "config" | "manual";
-  onChange: (value: "config" | "manual") => void;
+  label: string;
+  options: readonly Option<Value>[];
+  value: Value;
+  onChange: (value: Value) => void;
 }) {
   return (
     <RadioGroup
+      aria-label={label}
       value={value}
-      onChange={(next) => onChange(next === "manual" ? "manual" : "config")}
+      onChange={(next) => {
+        const match = options.find((option) => option.value === next);
+        if (match) onChange(match.value);
+      }}
     >
-      <Label>How winners are found</Label>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {WINNER_MODE_OPTIONS.map((option) => (
-          <Radio key={option.value} value={option.value} className="w-full">
-            <Radio.Content className="h-full w-full cursor-pointer items-start rounded-2xl border border-border p-4 transition-colors duration-150 ease-out not-data-[selected]:hover:bg-default data-[selected]:border-accent data-[selected]:bg-accent-soft">
+      <div className={GRID_COLUMNS[options.length] ?? "grid gap-2 sm:grid-cols-2"}>
+        {options.map((option) => (
+          <Radio key={option.value} value={option.value} className="mt-0 w-full">
+            <Radio.Content className="h-full w-full cursor-pointer items-start rounded-2xl border border-border p-3 transition-colors duration-150 ease-out not-data-[selected]:hover:bg-default data-[selected]:border-accent data-[selected]:bg-accent-soft">
               <Radio.Control className="mt-0.5">
                 <Radio.Indicator />
               </Radio.Control>

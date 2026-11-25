@@ -28,7 +28,7 @@ export default function ValueSection({
   return (
     <section className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
-        <h2 className="font-semibold">Value</h2>
+        <h2 className="font-semibold">Ranking value</h2>
         <p className="text-sm text-muted">
           The number each team is compared by.
         </p>

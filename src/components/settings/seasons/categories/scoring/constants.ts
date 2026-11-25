@@ -142,15 +142,43 @@ export const EXCLUDED_REASON_LABELS = {
 export const WINNER_MODE_OPTIONS = [
   {
     value: "config",
-    label: "Automatic",
-    description: "A config finds the winners from TBA or Statbotics data.",
+    label: "Data rule",
+    description: "Rank teams with TBA or Statbotics data. AI can build it.",
+  },
+  {
+    value: "script",
+    label: "AI script",
+    description: "AI writes code that can read any API and the picks.",
+  },
+  {
+    value: "leastUnique",
+    label: "Least unique",
+    description: "The submission whose teams were picked the most. No setup.",
   },
   {
     value: "manual",
-    label: "Manual",
-    description: "An admin selects the winners after the event.",
+    label: "Admin selects",
+    description: "You select the winning teams after the event.",
   },
-] as const satisfies Option<"config" | "manual">[];
+] as const satisfies Option<"config" | "script" | "leastUnique" | "manual">[];
+
+export const POINTS_SOURCE_OPTIONS = [
+  {
+    value: "formula",
+    label: "Formula",
+    description: "Calculated from the picks at each event.",
+  },
+  {
+    value: "script",
+    label: "AI script",
+    description: "The script returns the points at each event.",
+  },
+  {
+    value: "manual",
+    label: "Admin sets per team",
+    description: "You set each winning team's points with the winners.",
+  },
+] as const satisfies Option<"formula" | "script" | "manual">[];
 
 /** Readable names for the values of some fields, by field path. */
 export const FIELD_VALUE_LABELS: Partial<

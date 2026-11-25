@@ -34,6 +34,8 @@ import type * as lib_picks_split_event_categories from "../lib/picks/split_event
 import type * as lib_picks_validate_pick_submission from "../lib/picks/validate_pick_submission.js";
 import type * as lib_picks_validators from "../lib/picks/validators.js";
 import type * as lib_roles from "../lib/roles.js";
+import type * as lib_sandbox_network_policy from "../lib/sandbox/network_policy.js";
+import type * as lib_sandbox_script_runner from "../lib/sandbox/script_runner.js";
 import type * as lib_scoring_category_values from "../lib/scoring/category_values.js";
 import type * as lib_scoring_event_db from "../lib/scoring/event_db.js";
 import type * as lib_scoring_event_scores from "../lib/scoring/event_scores.js";
@@ -47,6 +49,10 @@ import type * as lib_scoring_generate_prompt from "../lib/scoring/generate/promp
 import type * as lib_scoring_generate_tools from "../lib/scoring/generate/tools.js";
 import type * as lib_scoring_global_value from "../lib/scoring/global_value.js";
 import type * as lib_scoring_run_config from "../lib/scoring/run_config.js";
+import type * as lib_scoring_script_context from "../lib/scoring/script/context.js";
+import type * as lib_scoring_script_contract from "../lib/scoring/script/contract.js";
+import type * as lib_scoring_script_generate from "../lib/scoring/script/generate.js";
+import type * as lib_scoring_script_preview from "../lib/scoring/script/preview.js";
 import type * as lib_scoring_sources_api_source from "../lib/scoring/sources/api_source.js";
 import type * as lib_scoring_sources_event_data from "../lib/scoring/sources/event_data.js";
 import type * as lib_scoring_sources_statbotics from "../lib/scoring/sources/statbotics.js";
@@ -59,6 +65,8 @@ import type * as mocks from "../mocks.js";
 import type * as picks from "../picks.js";
 import type * as results from "../results.js";
 import type * as scoring from "../scoring.js";
+import type * as scoringScriptData from "../scoringScriptData.js";
+import type * as scoringScripts from "../scoringScripts.js";
 import type * as seasons from "../seasons.js";
 import type * as users from "../users.js";
 
@@ -95,6 +103,8 @@ declare const fullApi: ApiFromModules<{
   "lib/picks/validate_pick_submission": typeof lib_picks_validate_pick_submission;
   "lib/picks/validators": typeof lib_picks_validators;
   "lib/roles": typeof lib_roles;
+  "lib/sandbox/network_policy": typeof lib_sandbox_network_policy;
+  "lib/sandbox/script_runner": typeof lib_sandbox_script_runner;
   "lib/scoring/category_values": typeof lib_scoring_category_values;
   "lib/scoring/event_db": typeof lib_scoring_event_db;
   "lib/scoring/event_scores": typeof lib_scoring_event_scores;
@@ -108,6 +118,10 @@ declare const fullApi: ApiFromModules<{
   "lib/scoring/generate/tools": typeof lib_scoring_generate_tools;
   "lib/scoring/global_value": typeof lib_scoring_global_value;
   "lib/scoring/run_config": typeof lib_scoring_run_config;
+  "lib/scoring/script/context": typeof lib_scoring_script_context;
+  "lib/scoring/script/contract": typeof lib_scoring_script_contract;
+  "lib/scoring/script/generate": typeof lib_scoring_script_generate;
+  "lib/scoring/script/preview": typeof lib_scoring_script_preview;
   "lib/scoring/sources/api_source": typeof lib_scoring_sources_api_source;
   "lib/scoring/sources/event_data": typeof lib_scoring_sources_event_data;
   "lib/scoring/sources/statbotics": typeof lib_scoring_sources_statbotics;
@@ -120,6 +134,8 @@ declare const fullApi: ApiFromModules<{
   picks: typeof picks;
   results: typeof results;
   scoring: typeof scoring;
+  scoringScriptData: typeof scoringScriptData;
+  scoringScripts: typeof scoringScripts;
   seasons: typeof seasons;
   users: typeof users;
 }>;

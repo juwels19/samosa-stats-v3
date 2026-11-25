@@ -5,7 +5,8 @@ import { getCurrentUser } from "./users";
 import { categoryValidator, seasonValidator } from "./lib/events/validators";
 import { findUnknownFields } from "./lib/scoring/field_paths";
 import { parseGlobalValueFormula } from "./lib/scoring/global_value";
-import { winnerSourceValidator } from "./lib/scoring/validators";
+import { checkScriptCode } from "./lib/scoring/script/contract";
+import { pointsSourceValidator, winnerSourceValidator } from "./lib/scoring/validators";
 import { winnerConfigSchema } from "./lib/scoring/winner_config";
 
 export const list = query({
@@ -130,8 +131,10 @@ export const get = query({
 });
 
 /**
- * Sets how a category finds its winners. A config is checked against the
- * schema and against the fields its sources have in the category's season.
+ * Sets how a category finds its winners and, for a global category, where
+ * its points come from. A config is checked against the schema and against
+ * the fields its sources have in the category's season. A script is checked
+ * only for its shape here: the page runs it on an example event before save.
  */
 export const setWinnerSource = mutation({
   args: {
@@ -142,6 +145,10 @@ export const setWinnerSource = mutation({
      * `maxCategoryValue - minCategoryValue`. Empty removes it.
      */
     valueFormula: v.optional(v.string()),
+    /** Global categories only: where the points come from. */
+    pointsSource: v.optional(pointsSourceValidator),
+    /** Required when the winners or the points come from a script. */
+    script: v.optional(v.object({ code: v.string(), description: v.string() })),
   },
   returns: v.null(),
   async handler(ctx, args) {
@@ -160,9 +167,27 @@ export const setWinnerSource = mutation({
       args.valueFormula === undefined
         ? {}
         : { valueFormula: checkValueFormula(category.isGlobal, args.valueFormula) };
+    if (args.winnerSource.type === "leastUnique" && !category.isGlobal) {
+      throw new Error("Only a global category can use the least unique rule: it applies to every submission.");
+    }
+    if (args.pointsSource !== undefined && !category.isGlobal) {
+      throw new Error("Only global categories have a points source.");
+    }
+    const pointsSource = args.pointsSource ?? category.pointsSource;
+    if (pointsSource === "manual" && category.isGlobal && args.winnerSource.type !== "manual") {
+      throw new Error("Per-team points need winners that an admin selects.");
+    }
+    const usesScript =
+      args.winnerSource.type === "script" || (category.isGlobal && pointsSource === "script");
+    const scriptPatch = checkScript(usesScript, args.script);
+    const patch = {
+      ...valuePatch,
+      ...scriptPatch,
+      ...(args.pointsSource === undefined ? {} : { pointsSource: args.pointsSource }),
+    };
 
-    if (args.winnerSource.type === "manual") {
-      await ctx.db.patch(args.categoryId, { winnerSource: { type: "manual" }, ...valuePatch });
+    if (args.winnerSource.type !== "config") {
+      await ctx.db.patch(args.categoryId, { winnerSource: { type: args.winnerSource.type }, ...patch });
       return null;
     }
 
@@ -191,11 +216,34 @@ export const setWinnerSource = mutation({
 
     await ctx.db.patch(args.categoryId, {
       winnerSource: { type: "config", config: parsed.data },
-      ...valuePatch,
+      ...patch,
     });
     return null;
   },
 });
+
+/** The script to save. A script that is not used now is kept when it is sent, so it is there to use again. */
+function checkScript(
+  usesScript: boolean,
+  script: { code: string; description: string } | undefined,
+) {
+  if (script === undefined) {
+    if (usesScript) throw new Error("Add a script: the winners or points come from it.");
+    return {};
+  }
+  const issue = checkScriptCode(script.code);
+  if (issue !== null) {
+    if (usesScript) throw new Error(issue);
+    return {};
+  }
+  return {
+    script: {
+      code: script.code,
+      description: script.description.trim().slice(0, 1000),
+      updatedAt: Date.now(),
+    },
+  };
+}
 
 const MAX_FORMULA_LENGTH = 200;
 

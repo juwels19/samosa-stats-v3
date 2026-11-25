@@ -6,9 +6,12 @@ import {
   mockEventValidator,
 } from "./lib/mocks/validators";
 import {
+  categoryPointsResultValidator,
   categoryWinnerResultValidator,
   eventResultsFields,
   eventScoreFields,
+  pointsSourceValidator,
+  scoringScriptValidator,
   winnerSourceValidator,
 } from "./lib/scoring/validators";
 
@@ -94,6 +97,10 @@ export default defineSchema({
     winnerSource: v.optional(winnerSourceValidator),
     /** Global categories only: the formula of event values that gives the category's value. */
     valueFormula: v.optional(v.string()),
+    /** Global categories only: "script" takes the points from the script. Not set means the formula. */
+    pointsSource: v.optional(pointsSourceValidator),
+    /** Used when the winners or the points come from a script. */
+    script: v.optional(scoringScriptValidator),
   })
     .index("bySeason", ["season"])
     .index("bySeasonAndIsGlobal", ["season", "isGlobal"]),
@@ -125,6 +132,14 @@ export default defineSchema({
     event: v.id("events"),
     category: v.id("categories"),
     result: categoryWinnerResultValidator,
+  })
+    .index("byEvent", ["event"])
+    .index("byEventAndCategory", ["event", "category"]),
+  /** The points of each global category whose points come from a script, at an event. */
+  categoryPoints: defineTable({
+    event: v.id("events"),
+    category: v.id("categories"),
+    result: categoryPointsResultValidator,
   })
     .index("byEvent", ["event"])
     .index("byEventAndCategory", ["event", "category"]),

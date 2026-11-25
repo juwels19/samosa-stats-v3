@@ -9,7 +9,8 @@ import { getCategoryValues } from "./category_values";
 export type ScoreLineItem<CategoryId extends string> =
   | { type: "category"; category: CategoryId; team: number; amount: number }
   | { type: "award"; team: number; amount: number }
-  | { type: "leastUnique"; amount: number };
+  /** The submission is the least unique, and `category` uses the least unique rule. */
+  | { type: "leastUnique"; category?: CategoryId; amount: number };
 
 export type SubmissionScore<SubmissionId extends string, CategoryId extends string> = {
   submission: SubmissionId;
@@ -23,7 +24,7 @@ export type EventScores<SubmissionId extends string, CategoryId extends string> 
   scores: SubmissionScore<SubmissionId, CategoryId>[];
   topCatValue: number;
   topTeamValue: number;
-  /** The submissions that got the least unique deduction. */
+  /** The least unique submissions. Each least unique category gives them its value. */
   leastUnique: SubmissionId[];
 };
 
@@ -33,6 +34,8 @@ export function calculateEventScores<SubmissionId extends string, CategoryId ext
   winners,
   awardWinners,
   globalPoints = new Map(),
+  leastUniqueCategoryIds = [],
+  teamPoints = new Map(),
 }: {
   /** All categories offered at the event, global ones included. */
   categoryIds: readonly CategoryId[];
@@ -47,6 +50,10 @@ export function calculateEventScores<SubmissionId extends string, CategoryId ext
   awardWinners: readonly number[];
   /** Each global category's value at this event. Every submission gets these categories. */
   globalPoints?: ReadonlyMap<CategoryId, number | null>;
+  /** Global categories won by the least unique submissions, not by teams. */
+  leastUniqueCategoryIds?: readonly CategoryId[];
+  /** Global categories whose points an admin sets for each team. A team with no points gives 0. */
+  teamPoints?: ReadonlyMap<CategoryId, ReadonlyMap<number, number>>;
 }): EventScores<SubmissionId, CategoryId> {
   const { values, topCatValue } = getCategoryValues({ categoryIds, submissions, globalPoints });
   const globalIds = categoryIds.filter((categoryId) => globalPoints.has(categoryId));
@@ -67,9 +74,11 @@ export function calculateEventScores<SubmissionId extends string, CategoryId ext
     // Every submission gets the global categories, whether or not the pick stores them.
     for (const category of new Set([...submission.categoryIds, ...globalIds])) {
       const categoryWinners = new Set(winners.get(category) ?? []);
-      const amount = values.get(category)?.value ?? 0;
+      const value = values.get(category)?.value ?? 0;
+      const pointsByTeam = teamPoints.get(category);
       for (const team of teams) {
         if (categoryWinners.has(team)) {
+          const amount = pointsByTeam === undefined ? value : (pointsByTeam.get(team) ?? 0);
           lineItems.push({ type: "category", category, team, amount });
         }
       }
@@ -90,12 +99,15 @@ export function calculateEventScores<SubmissionId extends string, CategoryId ext
 
   const leastUnique = findLeastUnique(scores);
   const leastUniqueSet = new Set(leastUnique);
+  const leastUniqueItems = leastUniqueCategoryIds.map((category) => ({
+    type: "leastUnique" as const,
+    category,
+    amount: values.get(category)?.value ?? 0,
+  }));
 
   return {
     scores: scores.map(({ submission, uniqueness, lineItems }) => {
-      const items = leastUniqueSet.has(submission)
-        ? [...lineItems, { type: "leastUnique" as const, amount: -topTeamValue }]
-        : lineItems;
+      const items = leastUniqueSet.has(submission) ? [...lineItems, ...leastUniqueItems] : lineItems;
       return {
         submission,
         uniqueness,
@@ -109,12 +121,32 @@ export function calculateEventScores<SubmissionId extends string, CategoryId ext
   };
 }
 
+/** Each submission's uniqueness and team pick counts, for `findLeastUnique`. */
+export function getUniqueness<SubmissionId>(
+  submissions: readonly { id: SubmissionId; teams: readonly number[] }[],
+) {
+  const teamPicks = new Map<number, number>();
+  for (const submission of submissions) {
+    for (const team of new Set(submission.teams)) {
+      teamPicks.set(team, (teamPicks.get(team) ?? 0) + 1);
+    }
+  }
+  return submissions.map((submission) => {
+    const counts = [...new Set(submission.teams)].map((team) => teamPicks.get(team) ?? 0);
+    return {
+      submission: submission.id,
+      uniqueness: counts.reduce((sum, count) => sum + count, 0),
+      teamPickCounts: counts,
+    };
+  });
+}
+
 /**
  * The submission with the highest uniqueness. Ties go to the submission whose
  * team pick counts, sorted high to low, are higher at the first difference.
- * Submissions still tied all get the deduction.
+ * Submissions still tied are all least unique.
  */
-export function findLeastUnique<SubmissionId extends string>(
+export function findLeastUnique<SubmissionId>(
   scores: readonly { submission: SubmissionId; uniqueness: number; teamPickCounts: readonly number[] }[],
 ): SubmissionId[] {
   let leaders: typeof scores[number][] = [];

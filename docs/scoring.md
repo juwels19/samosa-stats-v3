@@ -32,9 +32,11 @@ The `+1` applies only to category values. It does not apply to team counts or to
 
 Each category finds one or more teams that won it. A win is not always the best or highest result. Each category has its own rule, given in its scoring description.
 
-Category winners come from one of two sources:
+Category winners come from one of four sources:
 
-- **Automatic:** code finds the winners from The Blue Alliance, FRC Events or Statbotics data.
+- **Automatic:** a config finds the winners from The Blue Alliance, FRC Events or Statbotics data.
+- **Script:** an AI-written script finds the winners. See [Scoring scripts](#scoring-scripts).
+- **Least unique submission:** global categories only. The least unique submissions win, not teams. See [Least unique categories](#least-unique-categories).
 - **Manual:** an admin selects the winners. Use this for subjective categories and for categories that no data source reports.
 
 An admin reviews all winners before the event results are final.
@@ -133,7 +135,40 @@ The result is checked with the same schema as a save, then fills the form. The p
 
 The code is in `convex/lib/scoring/generate/`. The model comes from the Convex env var `SCORING_GENERATION_MODEL` (an AI Gateway model ID). The default is `anthropic/claude-sonnet-5.5`. Convex also needs `AI_GATEWAY_API_KEY`.
 
-Some rules will not fit a config. These use a custom scorer, which is a TypeScript function in a registry.
+Some rules will not fit a config. These use a script. See [Scoring scripts](#scoring-scripts).
+
+### Scoring scripts
+
+A script is JavaScript that AI writes from a plain-language rule. It runs in a [Vercel Sandbox](https://vercel.com/docs/vercel-sandbox) each time an admin selects Calculate winners. Use it for rules that need data from more than one place, or pick data, that a config can't read.
+
+A script can set a category's winners, a global category's points, or both. The category's Scoring page sets this:
+
+- "How winners are found": Script.
+- "Where the points come from" (global categories only): Script.
+
+The script is an ES module with `export default async function score(ctx)`. It returns `{ winners?, points?, explanation, teams? }`:
+
+| Part | Meaning |
+|---|---|
+| `winners` | Team numbers. Required when the winners come from the script. `[]` when no team won |
+| `points` | Points for each winning team. Required when the points come from the script. `null` when there are none at this event. Rounded down |
+| `explanation` | 1 to 3 plain sentences for the admin about what the script found |
+| `teams` | Optional detail for each team: `value` and `note`. Max 100 |
+
+`ctx` is read-only. It has the event, its teams, every submission (name, teams, chosen categories), every category with its picks and current winners, the event values of [Global categories](#global-categories) and the TBA awards. `ctx.api.tba`, `ctx.api.statbotics` and `ctx.api.frcEvents` read those APIs. The full shape is `SCRIPT_CONTEXT_TYPE` in `convex/lib/scoring/script/contract.ts`, and the page shows it under "What the script gets and returns".
+
+Rules the sandbox applies:
+
+- It can reach only TBA, Statbotics (or the `STATBOTICS_BASE_URL` mirror) and FRC Events. All other hosts are blocked.
+- The API keys never go into the sandbox. The sandbox firewall adds them to each request on the way out (`convex/lib/sandbox/network_policy.ts`).
+- `Math.random` throws, so the same input gives the same result.
+- A run stops after 60 seconds.
+
+On the Scoring page, "Write script" sends the rule to the AI. The AI reads the API data, then writes and runs the script on the example event (an event of the category's season in the app, with its picks) until it works. The page shows the result: winners, points, explanation, team detail, API calls and logs. An admin can edit the script and run it again. Save is refused until the current script passed a run.
+
+Calculate winners runs the configs first and saves the awards, then runs every script in one sandbox. A script sees the new winners and awards. Script winners are saved in `categoryWinners` (type `script`), and script points in `categoryPoints`. A script that throws, or returns a result that is not valid, saves an error that the Scores page shows.
+
+Convex needs `VERCEL_TEAM_ID`, `VERCEL_PROJECT_ID` and `VERCEL_TOKEN` for the sandbox, and `AI_GATEWAY_API_KEY` for the AI. The model is `SCORING_GENERATION_MODEL`, the same as for configs. The code is in `convex/scoringScripts.ts`, `convex/scoringScriptData.ts`, `convex/lib/scoring/script/` and `convex/lib/sandbox/`.
 
 ## Event score
 
@@ -144,7 +179,7 @@ A player's event score is the sum of these line items.
 | Category win | `+value(c)` | One time for each pair of a picked category `c` and a picked team in `winners(c)` |
 | Global category win | `+value(g)` | One time for each pair of a global category `g` and a picked team in `winners(g)`. Every submission gets every global category |
 | Award | `-topCatValue` | One time for each picked team that won the season's deduction award |
-| Least unique | `-topTeamValue` | Only to the least unique submission. See [Least unique deduction](#least-unique-deduction) |
+| Least unique | `+value(g)` | One time for each least unique category `g`, only to the least unique submissions. See [Least unique categories](#least-unique-categories) |
 
 All line items are cumulative. For example, a player picks 2 teams that both won the same picked category. The player gets `+value(c)` two times.
 
@@ -168,7 +203,13 @@ A global category applies to every submission at the event. Players never choose
 
 Picks store the event's global category IDs with the chosen ones. Scoring ignores the stored global IDs and gives every submission every global category.
 
-Each global category has a points formula, set in "Points per winning team" on the category's Scoring page, under "How winners are found". It is there for automatic and manual categories, and is saved with Save scoring. It is not the same as a config's Value, which only ranks teams to find the winners.
+Each global category gets its points in one of 3 ways, set in step 2 of the category's Scoring page:
+
+- **Formula:** the same points for each winning team, calculated at each event. See below.
+- **AI script:** the script returns the points. See [Scoring scripts](#scoring-scripts).
+- **Admin sets per team:** only when an admin selects the winners. On the event's Scores page, the admin enters whole-number points for each winning team, next to the winners. Each player who picked a team gets that team's points. Finalize is refused while a winning team has no points. The points are saved with the manual winners (`teamPoints`).
+
+Chosen (not global) categories always use [Category value](#category-value). The formula is set in "Points per winning team", for automatic, script and manual categories, and is saved with Save scoring. It is not the same as a config's Value, which only ranks teams to find the winners.
 
 The formula is calculated at each event, so the points can be different at each event. A value with a fraction is rounded down. Each winning team in a submission gives the points, the same as a chosen category. Winners are found as for any other category: a config or an admin.
 
@@ -200,14 +241,20 @@ Each season sets one award as the deduction award, on the Season settings page. 
 
 The award can have more than one winner at an event. Each winner counts as a separate deduction.
 
-### Least unique deduction
+### Least unique categories
 
-This deduction discourages picks of very common or well known teams. It goes to one submission, not to a team.
+A global category can use the least unique rule: set "How winners are found" to "Least unique submission" on its Scoring page. Its winners are submissions, not teams. Use it to discourage picks of very common or well known teams.
 
-1. The submission with the highest `uniqueness(p)` gets the deduction.
-2. If submissions tie, sort the `picks(t)` values of each tied submission from highest to lowest. Compare the first values. The submission with the higher value gets the deduction.
+The least unique submissions are found from the picks each time scores are calculated. Nothing is saved until Finalize.
+
+1. The submission with the highest `uniqueness(p)` wins.
+2. If submissions tie, sort the `picks(t)` values of each tied submission from highest to lowest. Compare the first values. The submission with the higher value wins.
 3. If the first values are the same, compare the second values, then the third, and so on.
-4. If all values are the same, all tied submissions get the deduction.
+4. If all values are the same, all tied submissions win.
+
+Each winning submission gets `value(g)` one time, not one time for each team. The value comes from the category's points formula or script, the same as other global categories. For a deduction, use a negative formula. The usual one is `-topTeamValue`, and the page fills it in when you choose the rule.
+
+There is no fixed least unique deduction. A season with no least unique category gives none. Scores saved by Finalize before this change keep their `leastUnique` line items.
 
 ### Results status
 

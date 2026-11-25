@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Disclosure, buttonVariants } from "@heroui/react";
+import { Alert, Chip, Disclosure, buttonVariants } from "@heroui/react";
 import { format } from "date-fns";
 import { SlidersHorizontalIcon } from "lucide-react";
 import Link from "next/link";
@@ -10,6 +10,7 @@ import { winnerConfigSchema } from "../../../convex/lib/scoring/winner_config";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { getSelectOrder } from "@/components/settings/seasons/categories/scoring/get-select-order";
 import PreviewResultsTable from "@/components/settings/seasons/categories/scoring/preview-results-table";
+import ScriptResultDetails from "@/components/settings/seasons/categories/scoring/script-result-details";
 import WinnerSourceChip from "@/components/settings/seasons/categories/scoring/winner-source-chip";
 import ManualWinnersField from "./manual-winners-field";
 import type { EventScoringCategory, EventTeam } from "./types";
@@ -49,7 +50,41 @@ export default function ScoringCategoryCard({
         eventId={eventId}
         isLocked={isLocked}
       />
+      <ScriptPoints category={category} />
     </li>
+  );
+}
+
+/** The last points from a global category's script. */
+function ScriptPoints({ category }: { category: EventScoringCategory }) {
+  if (!category.isGlobal || category.pointsSource !== "script") return null;
+  const result = category.pointsResult;
+  if (result === null) {
+    return <p className="text-sm text-muted">Points not calculated yet. Select Calculate winners.</p>;
+  }
+  if (result.type === "error") {
+    return (
+      <Alert status="danger">
+        <Alert.Indicator />
+        <Alert.Content>
+          <Alert.Title>Points not calculated {format(result.calculatedAt, "MMM d, h:mm a")}</Alert.Title>
+          <Alert.Description className="whitespace-pre-wrap">{result.message}</Alert.Description>
+        </Alert.Content>
+      </Alert>
+    );
+  }
+  // A script that sets the winners too already shows its explanation.
+  if (category.winnerSource?.type === "script") return null;
+  return (
+    <div className="flex flex-col gap-1 border-t border-border pt-3">
+      <p className="text-sm">
+        <span className="font-medium">
+          {result.points === null ? "No points" : `${result.points} ${Math.abs(result.points) === 1 ? "pt" : "pts"}`}
+        </span>{" "}
+        <span className="text-muted">from the script. {result.explanation}</span>
+      </p>
+      <ScriptResultDetails teams={[]} apiCalls={result.apiCalls} />
+    </div>
   );
 }
 
@@ -65,14 +100,20 @@ function CategoryValue({ category }: { category: EventScoringCategory }) {
             : "bg-warning-soft text-warning-soft-foreground",
         )}
         title={
-          category.valueFormula
-            ? `Every submission gets this category. Points: ${category.valueFormula}`
-            : "Every submission gets this category. Add a points formula on its Scoring page."
+          category.pointsSource === "manual"
+            ? "Every submission gets this category. An admin sets each winning team's points."
+            : category.pointsSource === "script"
+            ? "Every submission gets this category. Its script gives the points."
+            : category.valueFormula
+              ? `Every submission gets this category. Points: ${category.valueFormula}`
+              : "Every submission gets this category. Add a points formula on its Scoring page."
         }
       >
-        {category.hasValue
-          ? `${category.value} ${Math.abs(category.value) === 1 ? "pt" : "pts"}`
-          : "No value"}
+        {category.pointsSource === "manual"
+          ? "Points per team"
+          : category.hasValue
+            ? `${category.value} ${Math.abs(category.value) === 1 ? "pt" : "pts"}`
+            : "No value"}
         <span className="font-normal">· global</span>
       </span>
     );
@@ -127,20 +168,48 @@ function CategoryWinners({
     );
   }
 
+  if (winnerSource.type === "leastUnique") {
+    const leastUnique = category.leastUnique ?? [];
+    if (leastUnique.length === 0) {
+      return <p className="text-sm text-muted">No submissions yet.</p>;
+    }
+    return (
+      <div className="flex flex-col gap-2">
+        <ul className="flex flex-wrap gap-2" aria-label="Least unique submissions">
+          {leastUnique.map((submission) => (
+            <li key={submission.name}>
+              <Chip variant="soft" color="warning">
+                <span className="max-w-64 truncate font-semibold">{submission.name}</span>
+                <span className="tabular-nums">uniqueness {submission.uniqueness}</span>
+              </Chip>
+            </li>
+          ))}
+        </ul>
+        <p className="text-xs text-muted">
+          From the current picks. Each submission here gets this category&apos;s points one time.
+        </p>
+      </div>
+    );
+  }
+
   if (winnerSource.type === "manual") {
     const saved = result?.type === "manual" ? result.winners : [];
+    const savedPoints = result?.type === "manual" ? (result.teamPoints ?? []) : [];
+    const usesTeamPoints = category.isGlobal && category.pointsSource === "manual";
     if (isLocked) {
-      return <WinnerTeams winners={saved} teams={teams} />;
+      return <WinnerTeams winners={saved} teams={teams} points={usesTeamPoints ? savedPoints : undefined} />;
     }
     return (
       <div className="flex flex-col gap-2">
         <ManualWinnersField
           // Reset local edits when the saved winners change.
-          key={saved.join(",")}
+          key={`${saved.join(",")}|${savedPoints.map((row) => `${row.team}:${row.points}`).join(",")}`}
           eventId={eventId}
           categoryId={category._id}
           teams={teams}
           savedWinners={saved}
+          usesTeamPoints={usesTeamPoints}
+          savedPoints={savedPoints}
         />
         {result?.type === "manual" ? (
           <p className="text-xs text-muted">
@@ -175,7 +244,17 @@ function CategoryWinners({
     );
   }
 
-  if (result.type !== "config") return null;
+  if (result.type === "script") {
+    return (
+      <div className="flex flex-col gap-2">
+        <WinnerTeams winners={result.winners} teams={teams} />
+        <p className="text-sm">{result.explanation}</p>
+        <ScriptResultDetails teams={result.teams} apiCalls={result.apiCalls} />
+      </div>
+    );
+  }
+
+  if (result.type !== "config" || winnerSource.type !== "config") return null;
 
   const parsed = winnerConfigSchema.safeParse(winnerSource.config);
   const order = parsed.success ? getSelectOrder(parsed.data) : "desc";

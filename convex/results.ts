@@ -5,7 +5,10 @@ import { internalMutation, mutation, query, type QueryCtx } from "./_generated/s
 import {
   getEventCategories,
   getEventResultsRow,
+  getCategoryPointsRows,
   getGlobalCategoryValues,
+  getManualTeamPoints,
+  getScriptPoints,
   resultMatchesSource,
 } from "./lib/scoring/event_db";
 import { calculateEventScores } from "./lib/scoring/event_scores";
@@ -61,7 +64,7 @@ async function requireAdmin(ctx: QueryCtx) {
  * awards. `blockers` lists what must be fixed before the results can be final.
  */
 async function calculateDraftResults(ctx: QueryCtx, event: Doc<"events">) {
-  const [season, categories, picks, winnerRows, resultsRow] = await Promise.all([
+  const [season, categories, picks, winnerRows, resultsRow, pointsRows] = await Promise.all([
     ctx.db.get(event.season),
     getEventCategories(ctx, event),
     ctx.db.query("picks").withIndex("byEvent", (q) => q.eq("event", event._id)).collect(),
@@ -70,6 +73,7 @@ async function calculateDraftResults(ctx: QueryCtx, event: Doc<"events">) {
       .withIndex("byEvent", (q) => q.eq("event", event._id))
       .collect(),
     getEventResultsRow(ctx, event._id),
+    getCategoryPointsRows(ctx, event._id),
   ]);
   if (season === null) {
     throw new Error("The event's season was not found.");
@@ -123,6 +127,17 @@ async function calculateDraftResults(ctx: QueryCtx, event: Doc<"events">) {
   const globalIds = new Set(
     categories.filter((category) => category.isGlobal).map((category) => category._id),
   );
+  const teamPoints = getManualTeamPoints(
+    categories,
+    new Map(winnerRows.map((row) => [row.category, row.result])),
+  );
+  const missingTeamPoints = categories.filter((category) => {
+    const points = teamPoints.get(category._id);
+    return points !== undefined && (winners.get(category._id) ?? []).some((team) => !points.has(team));
+  });
+  const leastUniqueCategories = categories.filter(
+    (category) => category.isGlobal && category.winnerSource?.type === "leastUnique",
+  );
   // A pick can hold a category the event no longer offers. It gives no points.
   const chosenCategories = (pick: Doc<"picks">) =>
     pick.categories.filter((id) => categoriesById.has(id) && !globalIds.has(id));
@@ -137,6 +152,7 @@ async function calculateDraftResults(ctx: QueryCtx, event: Doc<"events">) {
         teams,
       })),
     }),
+    getScriptPoints(pointsRows),
   );
 
   const result = calculateEventScores({
@@ -149,6 +165,8 @@ async function calculateDraftResults(ctx: QueryCtx, event: Doc<"events">) {
     winners,
     awardWinners,
     globalPoints: globalValues,
+    leastUniqueCategoryIds: leastUniqueCategories.map((category) => category._id),
+    teamPoints,
   });
   const scoreByPick = new Map(result.scores.map((score) => [score.submission, score]));
 
@@ -168,15 +186,18 @@ async function calculateDraftResults(ctx: QueryCtx, event: Doc<"events">) {
   });
 
   // A global category can have no winners: it then gives no points. Its
-  // points formula only matters when it has winners.
+  // points formula only matters when it has winners. A least unique category
+  // has winners whenever there are submissions.
   const missingWinners = categories.filter(
     (category) => !category.isGlobal && !winners.has(category._id),
   );
+  const hasGlobalWinners = (category: Doc<"categories">) =>
+    category.winnerSource?.type === "leastUnique"
+      ? result.leastUnique.length > 0
+      : (winners.get(category._id)?.length ?? 0) > 0;
   const missingValues = categories.filter(
     (category) =>
-      category.isGlobal &&
-      (winners.get(category._id)?.length ?? 0) > 0 &&
-      globalValues.get(category._id) === null,
+      category.isGlobal && hasGlobalWinners(category) && globalValues.get(category._id) === null,
   );
   const blockers = [
     ...(event.status === "COMPLETE" ? [] : ["The event is not complete yet."]),
@@ -194,7 +215,14 @@ async function calculateDraftResults(ctx: QueryCtx, event: Doc<"events">) {
     ...(missingValues.length === 0
       ? []
       : [
-          `${missingValues.length} global ${missingValues.length === 1 ? "category has" : "categories have"} winners but no points. Add a points formula on each category's Scoring page: ${missingValues
+          `${missingValues.length} global ${missingValues.length === 1 ? "category has" : "categories have"} winners but no points. Add a points formula on each category's Scoring page, or calculate winners again for a script: ${missingValues
+            .map((category) => category.text)
+            .join(", ")}.`,
+        ]),
+    ...(missingTeamPoints.length === 0
+      ? []
+      : [
+          `Set the points of each winning team: ${missingTeamPoints
             .map((category) => category.text)
             .join(", ")}.`,
         ]),

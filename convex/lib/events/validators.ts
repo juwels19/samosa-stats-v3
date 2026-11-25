@@ -1,7 +1,11 @@
 import { v } from "convex/values";
 import { Doc, Id } from "../../_generated/dataModel";
 import { mockEventValidator } from "../mocks/validators";
-import { winnerSourceValidator } from "../scoring/validators";
+import {
+  pointsSourceValidator,
+  scoringScriptValidator,
+  winnerSourceValidator,
+} from "../scoring/validators";
 
 export const seasonValidator = v.object({
   _id: v.id("seasons"),
@@ -21,6 +25,8 @@ export const categoryValidator = v.object({
   isGlobal: v.boolean(),
   winnerSource: v.optional(winnerSourceValidator),
   valueFormula: v.optional(v.string()),
+  pointsSource: v.optional(pointsSourceValidator),
+  script: v.optional(scoringScriptValidator),
 });
 
 export const eventStatusValidator = v.union(

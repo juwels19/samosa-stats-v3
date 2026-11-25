@@ -63,9 +63,17 @@ export function resultMatchesSource(
   if (result === null || winnerSource === undefined) {
     return false;
   }
-  return winnerSource.type === "manual"
-    ? result.type === "manual"
-    : result.type === "config" || result.type === "error";
+  switch (winnerSource.type) {
+    case "manual":
+      return result.type === "manual";
+    case "config":
+      return result.type === "config" || result.type === "error";
+    case "script":
+      return result.type === "script" || result.type === "error";
+    case "leastUnique":
+      // Found from the picks each time. Nothing is saved.
+      return false;
+  }
 }
 
 /** "final" once an admin finalizes the results. Draft until then. */
@@ -88,17 +96,82 @@ export async function assertResultsNotFinal(ctx: QueryCtx, eventId: Id<"events">
 }
 
 /**
- * Each global category's value at an event, keyed by category: its value
- * formula calculated with the event's values, rounded down. Null when the
- * category has no formula or the formula gives no value.
+ * Each global category's value at an event, keyed by category, rounded down.
+ * The value comes from the category's script points when `pointsSource` is
+ * "script", or from its value formula. Null when there is no value.
  */
 export function getGlobalCategoryValues(
   categories: readonly Doc<"categories">[],
   inputs: GlobalValueInputs,
+  scriptPoints: ReadonlyMap<Id<"categories">, number | null> = new Map(),
 ): Map<Id<"categories">, number | null> {
   return new Map(
     categories
       .filter((category) => category.isGlobal)
-      .map((category) => [category._id, evaluateGlobalValue(category.valueFormula, inputs)]),
+      .map((category) => {
+        // Each team has its own points, set with the winners. See `teamPoints` in event scores.
+        if (category.pointsSource === "manual") return [category._id, 0];
+        if (category.pointsSource === "script") {
+          const points = scriptPoints.get(category._id) ?? null;
+          return [category._id, points === null ? null : Math.floor(points)];
+        }
+        return [category._id, evaluateGlobalValue(category.valueFormula, inputs)];
+      }),
   );
+}
+
+/** The saved script points rows of an event, keyed by category. */
+export async function getCategoryPointsRows(ctx: QueryCtx, eventId: Id<"events">) {
+  const rows = await ctx.db
+    .query("categoryPoints")
+    .withIndex("byEvent", (q) => q.eq("event", eventId))
+    .collect();
+  return new Map(rows.map((row) => [row.category, row.result]));
+}
+
+/** The points of each script points result. Errors give no points. */
+export function getScriptPoints(
+  rows: ReadonlyMap<Id<"categories">, Doc<"categoryPoints">["result"]>,
+): Map<Id<"categories">, number | null> {
+  return new Map(
+    [...rows].map(([categoryId, result]) => [
+      categoryId,
+      result.type === "script" ? result.points : null,
+    ]),
+  );
+}
+
+export async function upsertCategoryPoints(
+  ctx: MutationCtx,
+  eventId: Id<"events">,
+  categoryId: Id<"categories">,
+  result: Doc<"categoryPoints">["result"],
+) {
+  const existing = await ctx.db
+    .query("categoryPoints")
+    .withIndex("byEventAndCategory", (q) => q.eq("event", eventId).eq("category", categoryId))
+    .unique();
+  if (existing === null) {
+    await ctx.db.insert("categoryPoints", { event: eventId, category: categoryId, result });
+  } else {
+    await ctx.db.patch(existing._id, { result });
+  }
+}
+
+/**
+ * Each team's points for the global categories whose points an admin sets,
+ * keyed by category. Only manual results count.
+ */
+export function getManualTeamPoints(
+  categories: readonly Doc<"categories">[],
+  results: ReadonlyMap<Id<"categories">, Doc<"categoryWinners">["result"]>,
+): Map<Id<"categories">, Map<number, number>> {
+  const points = new Map<Id<"categories">, Map<number, number>>();
+  for (const category of categories) {
+    if (!category.isGlobal || category.pointsSource !== "manual") continue;
+    const result = results.get(category._id);
+    const rows = result?.type === "manual" ? (result.teamPoints ?? []) : [];
+    points.set(category._id, new Map(rows.map((row) => [row.team, row.points])));
+  }
+  return points;
 }

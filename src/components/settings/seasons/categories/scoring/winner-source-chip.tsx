@@ -16,13 +16,15 @@ export default function WinnerSourceChip({
     );
   }
 
+  const label = {
+    config: "Automatic",
+    script: "Script",
+    leastUnique: "Least unique",
+    manual: "Manual",
+  }[winnerSource.type];
   return (
-    <Chip
-      size="sm"
-      variant="soft"
-      color={winnerSource.type === "config" ? "accent" : "default"}
-    >
-      {winnerSource.type === "config" ? "Automatic" : "Manual"}
+    <Chip size="sm" variant="soft" color={winnerSource.type === "manual" ? "default" : "accent"}>
+      {label}
     </Chip>
   );
 }

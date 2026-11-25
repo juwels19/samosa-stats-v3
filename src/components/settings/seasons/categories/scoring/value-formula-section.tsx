@@ -1,6 +1,6 @@
 "use client";
 
-import { Description, FieldError, Input, Label, TextField } from "@heroui/react";
+import { Description, Disclosure, FieldError, Input, Label, TextField } from "@heroui/react";
 
 import {
   GLOBAL_VALUE_FUNCTIONS,
@@ -16,9 +16,8 @@ const TERMS = [
 ];
 
 /**
- * The points a global category gives for each winning team: a formula of
- * event and submission values, calculated at each event. Saved with the rest
- * of the scoring. Not the same as a config's Value, which ranks teams.
+ * The points formula of a global category: event and submission values,
+ * calculated at each event. Not the same as a data rule's ranking value.
  */
 export default function ValueFormulaSection({
   value,
@@ -30,14 +29,7 @@ export default function ValueFormulaSection({
   onChange: (value: string) => void;
 }) {
   return (
-    <section className="flex flex-col gap-3 rounded-2xl border border-border p-4">
-      <div className="flex flex-col gap-1">
-        <h2 className="font-semibold">Points per winning team</h2>
-        <p className="text-sm text-muted">
-          Every submission gets this global category. Each of its winning teams in a submission gives these
-          points, calculated at each event from the picks and rounded down.
-        </p>
-      </div>
+    <div className="flex flex-col gap-3">
       <TextField fullWidth value={value} onChange={onChange} isInvalid={error !== null}>
         <Label>Points formula</Label>
         <Input className="font-mono" placeholder="maxCategoryValue - minCategoryValue" />
@@ -45,20 +37,36 @@ export default function ValueFormulaSection({
           <FieldError>{error}</FieldError>
         ) : (
           <Description>
-            For example teamPicks(6) or ceil(categoryValue(2) / 2). Use + - * /, // (integer division), %
-            (mod), round() ceil() floor() and parentheses. n starts at 1, the highest.
+            Calculated at each event and rounded down. Use a negative number for a deduction, for example
+            -topTeamValue.
           </Description>
         )}
       </TextField>
-      <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
-        {TERMS.map((term) => (
-          <div key={term.name} className="flex flex-col">
-            <dt className="font-mono text-foreground">{term.name}</dt>
-            <dd className="text-muted">{term.description}</dd>
-          </div>
-        ))}
-      </dl>
-    </section>
+      <Disclosure>
+        <Disclosure.Heading>
+          <Disclosure.Trigger className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-muted">
+            What you can use in a formula
+            <Disclosure.Indicator />
+          </Disclosure.Trigger>
+        </Disclosure.Heading>
+        <Disclosure.Content>
+          <Disclosure.Body className="flex flex-col gap-3">
+            <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
+              {TERMS.map((term) => (
+                <div key={term.name} className="flex flex-col">
+                  <dt className="font-mono text-foreground">{term.name}</dt>
+                  <dd className="text-muted">{term.description}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="text-sm text-muted">
+              Use + - * /, // (integer division), % (mod), round() ceil() floor() and parentheses. n starts at 1,
+              the highest. For example teamPicks(6) or ceil(categoryValue(2) / 2).
+            </p>
+          </Disclosure.Body>
+        </Disclosure.Content>
+      </Disclosure>
+    </div>
   );
 }
 

@@ -94,7 +94,7 @@ function EventScoringContent({ data }: { data: EventScoringData }) {
 
       <CategoryGroup
         title="Automatic"
-        description="Winners come from TBA and Statbotics data. Calculate again to get the latest results and awards."
+        description="Winners come from configs and scripts that read TBA, Statbotics and FRC Events data. Calculate again to get the latest results and awards."
         categories={groups.automatic}
         teams={teams}
         eventId={event._id}

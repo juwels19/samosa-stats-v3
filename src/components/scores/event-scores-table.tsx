@@ -43,7 +43,9 @@ export default function EventScoresTable({
       case "award":
         return `Deduction award · ${team(item.team)}`;
       case "leastUnique":
-        return "Least unique submission";
+        return item.category
+          ? `${categoryNames.get(item.category) ?? "Removed category"} (global) · least unique submission`
+          : "Least unique submission";
     }
   };
 
