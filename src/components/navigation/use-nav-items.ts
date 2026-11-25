@@ -2,7 +2,8 @@
 
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { adminMenuItems, generalMenuItems } from "./constants";
+import { canApproveUsers } from "../../../convex/lib/roles";
+import { adminMenuItems, approvalsMenuItem, generalMenuItems } from "./constants";
 
 export function useNavItems() {
   const { isAuthenticated } = useConvexAuth();
@@ -11,9 +12,14 @@ export function useNavItems() {
     isAuthenticated ? {} : "skip",
   );
   const isAdmin = isAuthenticated && (currentUser?.isAdmin ?? false);
+  const canApprove = isAuthenticated && canApproveUsers(currentUser);
 
   return {
     isAuthenticated,
-    items: isAdmin ? [...generalMenuItems, ...adminMenuItems] : generalMenuItems,
+    items: [
+      ...generalMenuItems,
+      ...(canApprove ? [approvalsMenuItem] : []),
+      ...(isAdmin ? adminMenuItems : []),
+    ],
   };
 }

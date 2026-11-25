@@ -3,7 +3,7 @@ import {
   revokeWaitlistEntry,
 } from "@/lib/actions/approvals";
 import WaitlistEntriesCard from "@/components/approvals/components/waitlist-entries-card";
-import { requireAdmin } from "@/lib/admin";
+import { requireApprover } from "@/lib/admin";
 import { getWaitlistEntries } from "@/lib/clerk/waitlist";
 
 export const metadata = {
@@ -12,7 +12,7 @@ export const metadata = {
 };
 
 export default async function ApprovalsPage() {
-  await requireAdmin();
+  await requireApprover();
 
   const entries = await getWaitlistEntries();
 

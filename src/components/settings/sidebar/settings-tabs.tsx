@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { aiTab, settingsTabs, testingTab } from "./constants";
+import { aiTab, settingsTabs, testingTab, usersTab } from "./constants";
 
 /** Underline tabs that stick under the top bar at every width. */
 export default function SettingsTabs({
@@ -16,7 +16,7 @@ export default function SettingsTabs({
   const pathname = usePathname();
   const tabs = [
     ...settingsTabs,
-    ...(isAdmin ? [aiTab] : []),
+    ...(isAdmin ? [usersTab, aiTab] : []),
     ...(showTesting ? [testingTab] : []),
   ];
 

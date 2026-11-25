@@ -33,6 +33,7 @@ import type * as lib_picks_replace_pick_selections from "../lib/picks/replace_pi
 import type * as lib_picks_split_event_categories from "../lib/picks/split_event_categories.js";
 import type * as lib_picks_validate_pick_submission from "../lib/picks/validate_pick_submission.js";
 import type * as lib_picks_validators from "../lib/picks/validators.js";
+import type * as lib_roles from "../lib/roles.js";
 import type * as lib_scoring_category_values from "../lib/scoring/category_values.js";
 import type * as lib_scoring_event_db from "../lib/scoring/event_db.js";
 import type * as lib_scoring_event_scores from "../lib/scoring/event_scores.js";
@@ -92,6 +93,7 @@ declare const fullApi: ApiFromModules<{
   "lib/picks/split_event_categories": typeof lib_picks_split_event_categories;
   "lib/picks/validate_pick_submission": typeof lib_picks_validate_pick_submission;
   "lib/picks/validators": typeof lib_picks_validators;
+  "lib/roles": typeof lib_roles;
   "lib/scoring/category_values": typeof lib_scoring_category_values;
   "lib/scoring/event_db": typeof lib_scoring_event_db;
   "lib/scoring/event_scores": typeof lib_scoring_event_scores;

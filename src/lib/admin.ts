@@ -6,12 +6,25 @@ import { ConvexHttpClient } from "convex/browser";
 import { clientEnv } from "@/env/client";
 import { notFound, redirect } from "next/navigation";
 import { ROUTES } from "@/lib/routes";
+import { canApproveUsers } from "../../convex/lib/roles";
 
 export async function requireAdmin() {
   const convex = await getAuthenticatedConvexClient();
   const currentUser = await convex.query(api.users.current, {});
 
   if (!currentUser?.isAdmin) {
+    notFound();
+  }
+
+  return currentUser;
+}
+
+/** Admins and approvers. Other users get a 404. */
+export async function requireApprover() {
+  const convex = await getAuthenticatedConvexClient();
+  const currentUser = await convex.query(api.users.current, {});
+
+  if (!canApproveUsers(currentUser)) {
     notFound();
   }
 

@@ -10,6 +10,9 @@ export const settingsTabs: SettingsTab[] = [
 ];
 
 /** Shown only to admins. */
+export const usersTab: SettingsTab = { label: "Users", href: "/settings/users" };
+
+/** Shown only to admins. */
 export const aiTab: SettingsTab = { label: "AI", href: "/settings/ai" };
 
 /** Shown only to admins on a deployment with mocks on. */

@@ -1,6 +1,6 @@
 "use server";
 
-import { requireAdmin } from "@/lib/admin";
+import { requireApprover } from "@/lib/admin";
 import { ROUTES } from "@/lib/routes";
 import { clerkClient } from "@clerk/nextjs/server";
 import { ConvexHttpClient } from "convex/browser";
@@ -25,7 +25,7 @@ function getEntryData(formData: FormData) {
 }
 
 export async function inviteWaitlistEntry(formData: FormData) {
-  await requireAdmin();
+  await requireApprover();
   const { entryId, email } = getEntryData(formData);
 
   const clerk = await clerkClient();
@@ -42,7 +42,7 @@ export async function inviteWaitlistEntry(formData: FormData) {
 }
 
 export async function revokeWaitlistEntry(formData: FormData) {
-  await requireAdmin();
+  await requireApprover();
   const { entryId, email } = getEntryData(formData);
 
   const clerk = await clerkClient();

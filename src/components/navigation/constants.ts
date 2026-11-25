@@ -19,8 +19,14 @@ export const generalMenuItems: NavItem[] = [
   { label: "Leaderboard", href: ROUTES.LEADERBOARD, icon: TrophyIcon },
 ];
 
+/** Shown to admins and approvers. */
+export const approvalsMenuItem: NavItem = {
+  label: "Approvals",
+  href: ROUTES.APPROVALS,
+  icon: UserCheckIcon,
+};
+
 export const adminMenuItems: NavItem[] = [
-  { label: "Approvals", href: ROUTES.APPROVALS, icon: UserCheckIcon },
   { label: "Scores", href: ROUTES.SCORES, icon: ClipboardListIcon },
   { label: "Settings", href: ROUTES.SETTINGS, icon: SettingsIcon },
 ];

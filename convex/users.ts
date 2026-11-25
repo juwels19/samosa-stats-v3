@@ -7,6 +7,7 @@ import {
 } from "./_generated/server";
 import { UserJSON } from "@clerk/backend";
 import { v, Validator } from "convex/values";
+import { canApproveUsers, getRoleFlags, getUserRole, USER_ROLES } from "./lib/roles";
 
 const waitlistStatusValidator = v.union(
   v.literal("pending"),
@@ -14,6 +15,8 @@ const waitlistStatusValidator = v.union(
   v.literal("completed"),
   v.literal("rejected"),
 );
+
+const userRoleValidator = v.union(...USER_ROLES.map((role) => v.literal(role)));
 
 const userValidator = v.object({
   _id: v.id("users"),
@@ -177,8 +180,8 @@ export const setWaitlistApproval = mutation({
   async handler(ctx, { waitlistEntryId, email, status }) {
     const currentUser = await getCurrentUser(ctx);
 
-    if (!currentUser?.isAdmin) {
-      throw new Error("Only admins can update waitlist approvals.");
+    if (!canApproveUsers(currentUser)) {
+      throw new Error("Only admins and approvers can update waitlist approvals.");
     }
 
     return await upsertWaitlistUser(ctx, {
@@ -186,6 +189,73 @@ export const setWaitlistApproval = mutation({
       email,
       status,
     });
+  },
+});
+
+/** Real users (not mock players) and their roles, for the users settings page. */
+export const listWithRoles = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("users"),
+      firstName: v.string(),
+      lastName: v.string(),
+      email: v.string(),
+      role: userRoleValidator,
+      isApproved: v.boolean(),
+      isCurrentUser: v.boolean(),
+      joinedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx) => {
+    const currentUser = await getCurrentUser(ctx);
+    if (!currentUser?.isAdmin) {
+      throw new Error("Only admins can view user roles.");
+    }
+
+    const users = await ctx.db.query("users").collect();
+    return users
+      .filter((user) => user.isMock !== true)
+      .map((user) => ({
+        _id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: getUserRole(user),
+        isApproved: user.isApproved,
+        isCurrentUser: user._id === currentUser._id,
+        joinedAt: user._creationTime,
+      }))
+      .sort(
+        (a, b) =>
+          USER_ROLES.indexOf(b.role) - USER_ROLES.indexOf(a.role) ||
+          a.email.localeCompare(b.email),
+      );
+  },
+});
+
+export const setRole = mutation({
+  args: { userId: v.id("users"), role: userRoleValidator },
+  returns: v.null(),
+  async handler(ctx, { userId, role }) {
+    const currentUser = await getCurrentUser(ctx);
+    if (!currentUser?.isAdmin) {
+      throw new Error("Only admins can change user roles.");
+    }
+    if (userId === currentUser._id) {
+      throw new Error("You can't change your own role.");
+    }
+
+    const user = await ctx.db.get(userId);
+    if (user === null || user.isMock === true) {
+      throw new Error("The user doesn't exist.");
+    }
+    if (role !== "player" && !user.isAdmin && !user.isApproved) {
+      throw new Error("Approve the user before you give them a role.");
+    }
+
+    await ctx.db.patch(userId, getRoleFlags(role));
+    return null;
   },
 });
 
