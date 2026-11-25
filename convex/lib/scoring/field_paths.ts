@@ -163,6 +163,8 @@ export function findUnknownFields(
   const issues: UnknownFieldIssue[] = [];
 
   for (const [measureName, measure] of Object.entries(config.measures)) {
+    // Custom sources have no schema. The preview checks them on real data.
+    if (measure.source === "api") continue;
     const fields = [
       ...(measure.field === undefined
         ? []

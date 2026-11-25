@@ -48,6 +48,7 @@ export default function CategoryScoringEditor({
       key={data.category._id}
       category={data.category}
       season={data.season}
+      exampleEventCode={data.exampleEventCode}
     />
   );
 }

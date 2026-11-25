@@ -85,6 +85,36 @@ Example, "3rd highest ratio of auto points to total points":
 }
 ```
 
+### Custom sources
+
+When no typed source has the data, a measure can read one event endpoint of TBA, Statbotics or FRC Events. Set `source` to `api` and give `api`:
+
+| Part | Meaning |
+|---|---|
+| `service` | `tba`, `statbotics` or `frcEvents` |
+| `path` | The endpoint, with `{eventKey}` (for example `2026onosh`), `{eventCode}` and `{year}`. TBA paths start with `/event/{eventKey}`. Statbotics paths include `{eventKey}`. FRC Events paths start with `/{year}/` and include `{eventCode}` |
+| `rows` | A dot path to the list in the response. Empty when the response is the list |
+| `team` | A dot path to the team in each row. A `*` makes one row for each match, for example `alliances.*.team_keys.*`. Teams can be `254`, `"254"` or `"frc254"` |
+
+Each row also has `$context`, the object at the first `*` of `team`. For example, `$context.score` is the score of the team's alliance.
+
+Some endpoints return an object keyed by team, for example `/event/{eventKey}/oprs` returns `{ "oprs": { "frc254": 41.2 } }`. Set `rows` to the path of that object and `team` to `$key`. Each entry becomes a row with `$key` (for example `frc254`). A number or other plain value is in the field `value`, and an object keeps its fields. For OPR: `rows` `oprs`, `team` `$key`, `field` `value`. Event-level data with no teams, such as `/event/{eventKey}/insights`, can't be a measure.
+
+Rules for custom sources:
+
+- Filters read the measure's own rows only. They can't name another source.
+- The `matches` setting does not apply. Filter on the row's level field, for example `comp_level = qm`.
+- Paths are checked when a config is saved. Custom sources have no schema, so the category page asks for a preview of the exact config before it saves. The preview shows the rows, teams and values each custom source read.
+- The code is in `convex/lib/scoring/sources/api_source.ts`. When several categories use the same endpoint, add a typed adapter for it and change those configs to the typed source.
+
+### AI-built configs
+
+On the category scoring page, "Build config" asks an LLM to write a config from a plain-language rule. The model can list the fields of the typed sources, read event endpoints (the same rules as custom sources) and run configs on the example event. It returns a config, short notes on its choices, or a reason why no data source can find the winners.
+
+The result is checked with the same schema as a save, then fills the form. The page marks each field the AI changed, runs the preview on the example event and has an Undo. Nothing is saved until an admin selects Save scoring.
+
+The code is in `convex/lib/scoring/generate/`. The model comes from the Convex env var `SCORING_GENERATION_MODEL` (an AI Gateway model ID). The default is `anthropic/claude-sonnet-5.5`. Convex also needs `AI_GATEWAY_API_KEY`.
+
 Some rules will not fit a config. These use a custom scorer, which is a TypeScript function in a registry.
 
 ## Event score

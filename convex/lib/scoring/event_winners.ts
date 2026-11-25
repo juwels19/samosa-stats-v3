@@ -3,8 +3,16 @@ import {
   type ScoringRow,
   type TeamWinnerResult,
 } from "./find_category_winners";
+import {
+  fetchApi,
+  getApiSourceKey,
+  toApiRows,
+  type ApiRow,
+  type ApiSourceSpec,
+} from "./sources/api_source";
 import { loadScoringEventData } from "./sources/event_data";
 import {
+  getApiSources,
   getRequiredSources,
   winnerConfigSchema,
   type ScoringSource,
@@ -14,7 +22,71 @@ export type EventSourceRows = {
   rows: Partial<Record<ScoringSource, readonly ScoringRow[]>>;
   /** Sources that could not be loaded, with the error message. */
   failures: Map<ScoringSource, string>;
+  /** Custom source rows, by `getApiSourceKey`. */
+  api?: Record<string, readonly ScoringRow[]>;
+  /** Custom sources that could not be loaded, by key. */
+  apiFailures?: Map<string, string>;
 };
+
+export type ApiSourceRows = {
+  rows: Record<string, ApiRow[]>;
+  failures: Map<string, string>;
+};
+
+/** Gets each custom source once. A failed source does not stop the others. */
+export async function loadApiSourceRows({
+  year,
+  eventCode,
+  specs,
+}: {
+  year: number;
+  eventCode: string;
+  specs: readonly ApiSourceSpec[];
+}): Promise<ApiSourceRows> {
+  // Specs with the same endpoint share one request.
+  const responses = new Map<string, Promise<unknown>>();
+  const settled = await Promise.allSettled(
+    specs.map(async (spec) => {
+      const requestKey = `${spec.service}:${spec.path}`;
+      let response = responses.get(requestKey);
+      if (response === undefined) {
+        response = fetchApi(spec.service, spec.path, { year, eventCode });
+        responses.set(requestKey, response);
+      }
+      return toApiRows(await response, spec);
+    }),
+  );
+
+  const result: ApiSourceRows = { rows: {}, failures: new Map() };
+  settled.forEach((outcome, index) => {
+    const key = getApiSourceKey(specs[index]);
+    if (outcome.status === "fulfilled") {
+      result.rows[key] = outcome.value;
+    } else {
+      result.failures.set(
+        key,
+        outcome.reason instanceof Error
+          ? outcome.reason.message
+          : "The custom source could not be loaded.",
+      );
+    }
+  });
+  return result;
+}
+
+/** The custom sources that the saved configs read, each one once. */
+export function getApiSourcesForConfigs(configs: readonly unknown[]) {
+  const specs = new Map<string, ApiSourceSpec>();
+  for (const config of configs) {
+    const parsed = winnerConfigSchema.safeParse(config);
+    if (parsed.success) {
+      for (const spec of getApiSources(parsed.data)) {
+        specs.set(getApiSourceKey(spec), spec);
+      }
+    }
+  }
+  return [...specs.values()];
+}
 
 export type ConfigCategoryOutcome<CategoryId extends string> =
   | {
@@ -110,10 +182,18 @@ export function findEventCategoryWinners<CategoryId extends string>({
       };
     }
 
-    const failed = getRequiredSources(parsed.data).flatMap((source) => {
-      const message = sourceRows.failures.get(source);
-      return message === undefined ? [] : [`${source}: ${message}`];
-    });
+    const failed = [
+      ...getRequiredSources(parsed.data).flatMap((source) => {
+        const message = sourceRows.failures.get(source);
+        return message === undefined ? [] : [`${source}: ${message}`];
+      }),
+      ...getApiSources(parsed.data).flatMap((spec) => {
+        const message = sourceRows.apiFailures?.get(getApiSourceKey(spec));
+        return message === undefined
+          ? []
+          : [`${spec.service} ${spec.path}: ${message}`];
+      }),
+    ];
     if (failed.length > 0) {
       return {
         categoryId,
@@ -126,6 +206,7 @@ export function findEventCategoryWinners<CategoryId extends string>({
       const result = findCategoryWinners(parsed.data, {
         teams,
         sources: sourceRows.rows,
+        api: sourceRows.api,
       });
       return { categoryId, type: "config", ...result };
     } catch (error) {

@@ -16,17 +16,21 @@ import { getCategoryValues } from "./lib/scoring/category_values";
 import {
   checkManualWinners,
   findEventCategoryWinners,
+  getApiSourcesForConfigs,
   getSourcesForConfigs,
+  loadApiSourceRows,
   loadEventSourceRows,
 } from "./lib/scoring/event_winners";
-import { findUnknownFields } from "./lib/scoring/field_paths";
-import { findCategoryWinners } from "./lib/scoring/find_category_winners";
-import { loadScoringEventData } from "./lib/scoring/sources/event_data";
 import {
-  getRequiredSources,
+  generateWinnerConfig,
+  type GenerationResult,
+} from "./lib/scoring/generate/generate";
+import { runConfigOnEvent } from "./lib/scoring/run_config";
+import {
   winnerConfigSchema,
 } from "./lib/scoring/winner_config";
 import {
+  apiCheckValidator,
   categoryWinnerResultValidator,
   teamWinnerResultValidator,
 } from "./lib/scoring/validators";
@@ -58,6 +62,7 @@ export const previewWinners = action({
       v.object({ measure: v.string(), source: v.string(), field: v.string() }),
     ),
     matchRowCount: v.number(),
+    apiChecks: v.array(apiCheckValidator),
   }),
   handler: async (ctx, args) => {
     const isAdmin = await ctx.runQuery(internal.scoring.currentUserIsAdmin, {});
@@ -79,18 +84,7 @@ export const previewWinners = action({
       throw new Error("Enter a valid event code.");
     }
 
-    const data = await loadScoringEventData({
-      year: args.year,
-      eventCode,
-      sources: getRequiredSources(parsed.data),
-    });
-    const result = findCategoryWinners(parsed.data, data);
-
-    return {
-      ...result,
-      unknownFields: findUnknownFields(parsed.data, args.year),
-      matchRowCount: data.sources["tba.matches"].length,
-    };
+    return await runConfigOnEvent(parsed.data, { year: args.year, eventCode });
   },
 });
 
@@ -298,18 +292,24 @@ export const calculateEventWinners = action({
       throw new Error("Load the event's teams first.");
     }
 
-    const sourceRows = await loadEventSourceRows({
-      year: input.year,
-      eventCode: input.eventCode,
-      teams: input.teams,
-      sources: getSourcesForConfigs(
-        input.categories.map((category) => category.config),
-      ),
-    });
+    const configs = input.categories.map((category) => category.config);
+    const [sourceRows, apiRows] = await Promise.all([
+      loadEventSourceRows({
+        year: input.year,
+        eventCode: input.eventCode,
+        teams: input.teams,
+        sources: getSourcesForConfigs(configs),
+      }),
+      loadApiSourceRows({
+        year: input.year,
+        eventCode: input.eventCode,
+        specs: getApiSourcesForConfigs(configs),
+      }),
+    ]);
     const outcomes = findEventCategoryWinners({
       categories: input.categories,
       teams: input.teams,
-      sourceRows,
+      sourceRows: { ...sourceRows, api: apiRows.rows, apiFailures: apiRows.failures },
     });
 
     await ctx.runMutation(internal.scoring.saveCalculatedWinners, {
@@ -441,3 +441,80 @@ function resultMatchesSource(
     ? result.type === "manual"
     : result.type === "config" || result.type === "error";
 }
+
+export const getGenerationInput = internalQuery({
+  args: { categoryId: v.id("categories") },
+  returns: v.object({
+    isAdmin: v.boolean(),
+    categoryText: v.string(),
+    year: v.number(),
+    gameName: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const currentUser = await getCurrentUser(ctx);
+    const category = await ctx.db.get(args.categoryId);
+    if (category === null) {
+      throw new Error("Category not found.");
+    }
+    const season = await ctx.db.get(category.season);
+    if (season === null) {
+      throw new Error("The category's season was not found.");
+    }
+    return {
+      isAdmin: currentUser?.isAdmin ?? false,
+      categoryText: category.text,
+      year: season.year,
+      gameName: season.gameName,
+    };
+  },
+});
+
+/**
+ * Asks an LLM to write a winner config from a plain-language rule. The model
+ * can read the typed sources and event-scoped TBA, Statbotics and FRC Events
+ * endpoints, and tests its config on the example event. Saves nothing.
+ */
+export const generateConfig = action({
+  args: {
+    categoryId: v.id("categories"),
+    description: v.string(),
+    eventCode: v.string(),
+  },
+  returns: v.union(
+    v.object({
+      status: v.literal("ok"),
+      config: v.any(),
+      notes: v.array(v.string()),
+    }),
+    v.object({
+      status: v.literal("unsupported"),
+      reason: v.string(),
+      notes: v.array(v.string()),
+    }),
+  ),
+  handler: async (ctx, args): Promise<GenerationResult> => {
+    const input = await ctx.runQuery(internal.scoring.getGenerationInput, {
+      categoryId: args.categoryId,
+    });
+    if (!input.isAdmin) {
+      throw new Error("Only admins can generate scoring configs.");
+    }
+
+    const description = args.description.trim();
+    if (description.length === 0 || description.length > 1000) {
+      throw new Error("Describe the rule in 1 to 1000 characters.");
+    }
+    const eventCode = args.eventCode.trim();
+    if (!/^[A-Za-z0-9]+$/.test(eventCode)) {
+      throw new Error("Enter a valid example event code.");
+    }
+
+    return await generateWinnerConfig({
+      categoryText: input.categoryText,
+      description,
+      year: input.year,
+      gameName: input.gameName,
+      eventCode,
+    });
+  },
+});

@@ -1,3 +1,4 @@
+import { getApiSourceKey } from "./sources/api_source";
 import { MATCH_SOURCES } from "./winner_config";
 import type {
   MatchScope,
@@ -20,6 +21,8 @@ export type ScoringRow = { team: number } & Record<string, unknown>;
 export type WinnerEngineInput = {
   teams: readonly number[];
   sources: Partial<Record<ScoringSource, readonly ScoringRow[]>>;
+  /** Rows of custom sources, by `getApiSourceKey`. */
+  api?: Readonly<Record<string, readonly ScoringRow[]>>;
 };
 
 export type TeamWinnerResult = {
@@ -139,7 +142,12 @@ function measureTeam(
   }
 
   const rowFilters = measure.where.filter((filter) => !isCrossSource(filter));
-  const rows = getRows(data, measure.source, matches).filter(
+  // Custom sources ignore the match scope. Their filters choose the rows.
+  const sourceRows =
+    measure.source === "api"
+      ? (data.api?.[getApiSourceKey(measure.api)] ?? [])
+      : getRows(data, measure.source, matches);
+  const rows = sourceRows.filter(
     (row) =>
       row.team === team &&
       rowFilters.every((filter) => matchesFilter(row, filter)),

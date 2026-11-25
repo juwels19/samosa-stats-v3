@@ -86,7 +86,12 @@ export const create = mutation({
 export const get = query({
   args: { categoryId: v.string() },
   returns: v.union(
-    v.object({ category: categoryValidator, season: seasonValidator }),
+    v.object({
+      category: categoryValidator,
+      season: seasonValidator,
+      /** The latest finished event of the season, for previews. */
+      exampleEventCode: v.union(v.string(), v.null()),
+    }),
     v.null(),
   ),
   handler: async (ctx, args) => {
@@ -107,7 +112,19 @@ export const get = query({
       throw new Error("The category's season was not found.");
     }
 
-    return { category, season };
+    const events = await ctx.db
+      .query("events")
+      .withIndex("bySeason", (q) => q.eq("season", season._id))
+      .collect();
+    const latest = events
+      .filter((event) => event.status === "COMPLETE")
+      .toSorted((a, b) => b.endDate.localeCompare(a.endDate))[0];
+
+    return {
+      category,
+      season,
+      exampleEventCode: latest ? latest.eventCode.toLowerCase() : null,
+    };
   },
 });
 

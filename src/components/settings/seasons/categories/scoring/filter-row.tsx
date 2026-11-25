@@ -4,7 +4,7 @@ import { Button, Input, Label, TextField } from "@heroui/react";
 import { XIcon } from "lucide-react";
 import { Controller, useWatch, type Control } from "react-hook-form";
 
-import type { ScoringSource } from "../../../../../../convex/lib/scoring/winner_config";
+import type { MeasureSource } from "../../../../../../convex/lib/scoring/winner_config";
 import { FILTER_OP_OPTIONS, FILTER_SOURCE_OPTIONS } from "./constants";
 import FieldPathComboBox from "./field-path-combo-box";
 import type { ScoringFormValues } from "./form-values";
@@ -28,7 +28,8 @@ export default function FilterRow({
   control: Control<ScoringFormValues>;
   measureIndex: number;
   filterIndex: number;
-  measureSource: ScoringSource;
+  /** With a custom source, filters read its rows only, by plain field paths. */
+  measureSource: MeasureSource;
   year: number;
   onRemove: () => void;
 }) {
@@ -36,41 +37,63 @@ export default function FilterRow({
   const op = useWatch({ control, name: `${name}.op` });
   const fieldPath = useWatch({ control, name: `${name}.field` });
   const filterSource = useWatch({ control, name: `${name}.source` });
-  const source = filterSource === "measure" ? measureSource : filterSource;
+  const isApi = measureSource === "api";
+  const source =
+    filterSource !== "measure"
+      ? filterSource
+      : measureSource === "api"
+        ? "tba.matches"
+        : measureSource;
   const isList = op === "in" || op === "notIn";
   const isComparison =
     op === "gt" || op === "gte" || op === "lt" || op === "lte";
   const fieldPaths = useFieldPaths(source, year);
-  const valueOptions = isComparison
-    ? undefined
-    : getFilterValueOptions(source, fieldPath, fieldPaths);
+  const valueOptions =
+    isComparison || isApi
+      ? undefined
+      : getFilterValueOptions(source, fieldPath, fieldPaths);
 
   return (
-    <div className="grid gap-2 rounded-xl border border-border p-3 lg:grid-cols-[11rem_1fr_9rem_1fr_auto] lg:items-start">
-      <Controller
-        control={control}
-        name={`${name}.source`}
-        render={({ field }) => (
-          <OptionSelect
-            label="Source"
-            value={field.value}
-            options={FILTER_SOURCE_OPTIONS}
-            onChange={field.onChange}
-          />
-        )}
-      />
+    <div
+      className={
+        isApi
+          ? "grid gap-2 rounded-xl border border-border p-3 lg:grid-cols-[1fr_9rem_1fr_auto] lg:items-start"
+          : "grid gap-2 rounded-xl border border-border p-3 lg:grid-cols-[11rem_1fr_9rem_1fr_auto] lg:items-start"
+      }
+    >
+      {isApi ? null : (
+        <Controller
+          control={control}
+          name={`${name}.source`}
+          render={({ field }) => (
+            <OptionSelect
+              label="Source"
+              value={field.value}
+              options={FILTER_SOURCE_OPTIONS}
+              onChange={field.onChange}
+            />
+          )}
+        />
+      )}
       <Controller
         control={control}
         name={`${name}.field`}
-        render={({ field }) => (
-          <FieldPathComboBox
-            label="Field"
-            source={source}
-            year={year}
-            value={field.value}
-            onChange={field.onChange}
-          />
-        )}
+        render={({ field }) =>
+          isApi ? (
+            <TextField fullWidth value={field.value} onChange={field.onChange}>
+              <Label>Field</Label>
+              <Input autoComplete="off" className="font-mono text-sm" />
+            </TextField>
+          ) : (
+            <FieldPathComboBox
+              label="Field"
+              source={source}
+              year={year}
+              value={field.value}
+              onChange={field.onChange}
+            />
+          )
+        }
       />
       <Controller
         control={control}

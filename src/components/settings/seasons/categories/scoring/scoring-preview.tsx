@@ -4,25 +4,35 @@ import { Alert, Button, Input, Label, Spinner, TextField } from "@heroui/react";
 import { useAction } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { PlayIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { api } from "../../../../../../convex/_generated/api";
 import type { WinnerConfig } from "../../../../../../convex/lib/scoring/winner_config";
 import { getSelectOrder } from "./get-select-order";
 import PreviewResultsTable from "./preview-results-table";
 
-type PreviewResult = FunctionReturnType<typeof api.scoring.previewWinners>;
+export type PreviewResult = FunctionReturnType<
+  typeof api.scoring.previewWinners
+>;
 
 /** Runs the current config against any past event. Saves nothing. */
 export default function ScoringPreview({
   config,
   defaultYear,
+  defaultEventCode = "",
+  autoRun,
+  onRun,
 }: {
   config: WinnerConfig | null;
   defaultYear: number;
+  defaultEventCode?: string;
+  /** Runs this config on this event each time `key` changes. */
+  autoRun?: { key: number; eventCode: string; config: WinnerConfig } | null;
+  /** Called after each successful run, with the config that ran. */
+  onRun?: (config: WinnerConfig, result: PreviewResult) => void;
 }) {
   const previewWinners = useAction(api.scoring.previewWinners);
-  const [eventCode, setEventCode] = useState("");
+  const [eventCode, setEventCode] = useState(defaultEventCode);
   const [year, setYear] = useState(String(defaultYear));
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,18 +45,17 @@ export default function ScoringPreview({
     Number.isInteger(yearNumber) &&
     yearNumber >= 1992;
 
-  const run = async () => {
-    if (!canRun) return;
+  const runWith = async (runConfig: WinnerConfig, runEventCode: string) => {
     setIsRunning(true);
     setError(null);
     try {
-      setResult(
-        await previewWinners({
-          year: yearNumber,
-          eventCode: eventCode.trim(),
-          config,
-        }),
-      );
+      const next = await previewWinners({
+        year: yearNumber,
+        eventCode: runEventCode,
+        config: runConfig,
+      });
+      setResult(next);
+      onRun?.(runConfig, next);
     } catch (runError) {
       setResult(null);
       setError(runError instanceof Error ? runError.message : "Try again.");
@@ -54,6 +63,22 @@ export default function ScoringPreview({
       setIsRunning(false);
     }
   };
+
+  const run = async () => {
+    if (!canRun) return;
+    await runWith(config, eventCode.trim());
+  };
+
+  const lastAutoRun = useRef<number | null>(null);
+  useEffect(() => {
+    if (!autoRun || lastAutoRun.current === autoRun.key) return;
+    lastAutoRun.current = autoRun.key;
+    // Show the event the AI tested with, then run on it.
+    setEventCode(autoRun.eventCode);
+    void runWith(autoRun.config, autoRun.eventCode);
+    // Runs once for each key.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRun]);
 
   const order = config === null ? "desc" : getSelectOrder(config);
 
@@ -116,7 +141,10 @@ export default function ScoringPreview({
             {result.winners.length > 0 ? result.winners.join(", ") : "none"}
             <span className="text-muted">
               {" "}
-              · {result.teams.length} teams · {result.matchRowCount} match rows
+              · {result.teams.length} teams
+              {result.matchRowCount > 0
+                ? ` · ${result.matchRowCount} match rows`
+                : ""}
             </span>
           </p>
           {result.unknownFields.length > 0 ? (
@@ -125,9 +153,41 @@ export default function ScoringPreview({
               {result.unknownFields.map((issue) => issue.field).join(", ")}
             </p>
           ) : null}
+          <ApiChecks checks={result.apiChecks} />
           <PreviewResultsTable teams={result.teams} order={order} />
         </div>
       ) : null}
     </section>
+  );
+}
+
+/** How each custom source read the event, so an admin can trust it. */
+function ApiChecks({ checks }: { checks: PreviewResult["apiChecks"] }) {
+  if (checks.length === 0) return null;
+  return (
+    <ul className="flex flex-col gap-1 rounded-xl border border-border p-3 text-sm">
+      {checks.map((check) => (
+        <li
+          key={check.measure}
+          className="flex flex-wrap items-baseline gap-x-2"
+        >
+          <span
+            className={check.ok ? "text-success" : "text-danger"}
+            aria-hidden
+          >
+            {check.ok ? "✓" : "✕"}
+          </span>
+          <span className="font-mono">{check.measure}</span>
+          <span className="text-muted">
+            {check.error
+              ? check.error
+              : `${check.rowCount} rows, ${check.teamCount} teams, ${check.valueCount} with a number`}
+          </span>
+          <span className="sr-only">
+            {check.ok ? "Check passed" : "Check failed"}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }

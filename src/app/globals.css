@@ -128,3 +128,59 @@
     color: color-mix(in oklab, var(--foreground) 75%, transparent);
   }
 }
+
+/* Marks on scoring builder fields that the AI set. See ai-marks.tsx. */
+@layer components {
+  .ai-mark-ring {
+    position: absolute;
+    inset: -6px;
+    border-radius: 18px;
+    pointer-events: none;
+    box-shadow: 0 0 0 1.5px color-mix(in oklab, var(--accent) 70%, transparent);
+    background: color-mix(in oklab, var(--accent) 6%, transparent);
+    animation: ai-mark-fade 220ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+
+  .ai-mark-badge {
+    position: absolute;
+    top: -10px;
+    right: -8px;
+    z-index: 1;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--accent-foreground);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    transform-origin: top right;
+    animation: ai-mark-pop 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+
+  .ai-reveal {
+    animation: ai-mark-rise 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ai-mark-ring,
+    .ai-mark-badge,
+    .ai-reveal {
+      animation: none;
+    }
+  }
+}
+
+@keyframes ai-mark-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes ai-mark-pop {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes ai-mark-rise {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

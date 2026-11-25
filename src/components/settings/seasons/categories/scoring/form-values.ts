@@ -1,7 +1,9 @@
 import { findUnknownFields } from "../../../../../../convex/lib/scoring/field_paths";
+import type { ApiService } from "../../../../../../convex/lib/scoring/sources/api_source";
 import {
   winnerConfigSchema,
   type MatchScope,
+  type MeasureSource,
   type ScoringSource,
   type TeamScope,
   type WinnerConfig,
@@ -31,11 +33,26 @@ export type FilterFormValues = {
 
 export type MeasureFormValues = {
   name: string;
-  source: ScoringSource;
+  /** `api` is a custom endpoint, set by the `api*` fields. */
+  source: MeasureSource;
   op: OptionValue<typeof MEASURE_OP_OPTIONS>;
   field: string;
   where: FilterFormValues[];
+  apiService: ApiService;
+  apiPath: string;
+  apiRows: string;
+  apiTeam: string;
 };
+
+const EMPTY_API = {
+  apiService: "tba",
+  apiPath: "/event/{eventKey}/matches",
+  apiRows: "",
+  apiTeam: "alliances.*.team_keys.*",
+} as const satisfies Pick<
+  MeasureFormValues,
+  "apiService" | "apiPath" | "apiRows" | "apiTeam"
+>;
 
 export type ScoringFormValues = {
   mode: "manual" | "config";
@@ -67,6 +84,7 @@ export const DEFAULT_MEASURE: MeasureFormValues = {
   op: "value",
   field: "rank",
   where: [],
+  ...EMPTY_API,
 };
 
 export const DEFAULT_FORM_VALUES: ScoringFormValues = {
@@ -114,6 +132,14 @@ export function toFormValues(winnerSource: WinnerSource): ScoringFormValues {
       source: measure.source,
       op: measure.op,
       field: measure.field ?? "",
+      ...(measure.source === "api"
+        ? {
+            apiService: measure.api.service,
+            apiPath: measure.api.path,
+            apiRows: measure.api.rows,
+            apiTeam: measure.api.team,
+          }
+        : EMPTY_API),
       where: measure.where.map((filter) => ({
         source:
           filter.source === undefined || filter.source === measure.source
@@ -191,13 +217,25 @@ export function toWinnerConfigInput(
       values.measures.map((measure) => [
         measure.name.trim(),
         {
-          source: measure.source,
+          ...(measure.source === "api"
+            ? {
+                source: "api" as const,
+                api: {
+                  service: measure.apiService,
+                  path: measure.apiPath.trim(),
+                  rows: measure.apiRows.trim(),
+                  team: measure.apiTeam.trim(),
+                },
+              }
+            : { source: measure.source }),
           op: measure.op,
           ...(measure.op === "count" || measure.field.trim() === ""
             ? {}
             : { field: measure.field.trim() }),
           where: measure.where.map((filter) => ({
-            ...(filter.source === "measure" || filter.source === measure.source
+            ...(filter.source === "measure" ||
+            filter.source === measure.source ||
+            measure.source === "api"
               ? {}
               : { source: filter.source }),
             field: filter.field.trim(),

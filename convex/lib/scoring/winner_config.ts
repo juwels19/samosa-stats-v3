@@ -1,5 +1,11 @@
 import * as z from "zod";
 
+import {
+  apiSourceSpecSchema,
+  getApiSourceKey,
+  type ApiSourceSpec,
+} from "./sources/api_source";
+
 /**
  * Data sources a measure can read. Each source is a list of rows, and each
  * row belongs to one team. The row schemas are in `sources/`.
@@ -42,19 +48,44 @@ const rowFilterSchema = z.object({
   value: z.union([scalarSchema, z.array(scalarSchema)]),
 });
 
-const measureSchema = z
+const measureOpSchema = z
+  .enum(["value", "sum", "avg", "max", "min", "count"])
+  .default("value");
+
+const typedMeasureSchema = z
   .object({
     source: z.enum(SCORING_SOURCES),
     /** Only rows that match every filter are measured. */
     where: z.array(rowFilterSchema).default([]),
     /** Not used by `count`. */
     field: z.string().trim().min(1).optional(),
-    op: z.enum(["value", "sum", "avg", "max", "min", "count"]).default("value"),
+    op: measureOpSchema,
   })
   .refine((measure) => measure.op === "count" || measure.field !== undefined, {
     message: "Enter a field for this operation.",
     path: ["field"],
   });
+
+/** A measure that reads a custom endpoint. See `sources/api_source.ts`. */
+const apiMeasureSchema = z
+  .object({
+    source: z.literal("api"),
+    api: apiSourceSpecSchema,
+    /** Filters read the same rows. Other sources can't be named. */
+    where: z.array(rowFilterSchema).default([]),
+    field: z.string().trim().min(1).optional(),
+    op: measureOpSchema,
+  })
+  .refine((measure) => measure.op === "count" || measure.field !== undefined, {
+    message: "Enter a field for this operation.",
+    path: ["field"],
+  })
+  .refine((measure) => measure.where.every((filter) => filter.source === undefined), {
+    message: "Filters on a custom source can only read its own rows.",
+    path: ["where"],
+  });
+
+const measureSchema = z.union([typedMeasureSchema, apiMeasureSchema]);
 
 const operandSchema = z.union([z.string().trim().min(1), z.number()]);
 
@@ -145,13 +176,16 @@ export type TeamScope = (typeof TEAM_SCOPES)[number];
 export type MatchScope = (typeof MATCH_SCOPES)[number];
 export type RowFilter = z.infer<typeof rowFilterSchema>;
 export type Measure = z.infer<typeof measureSchema>;
+export type TypedMeasure = z.infer<typeof typedMeasureSchema>;
+export type ApiMeasure = z.infer<typeof apiMeasureSchema>;
+export type MeasureSource = Measure["source"];
 export type Select = z.infer<typeof selectSchema>;
 
 /** The sources a config reads, including alliances for team scopes. */
 export function getRequiredSources(config: WinnerConfig): ScoringSource[] {
   const sources = new Set<ScoringSource>(
     Object.values(config.measures).flatMap((measure) => [
-      measure.source,
+      ...(measure.source === "api" ? [] : [measure.source]),
       ...measure.where.flatMap((filter) =>
         filter.source ? [filter.source] : [],
       ),
@@ -161,4 +195,15 @@ export function getRequiredSources(config: WinnerConfig): ScoringSource[] {
     sources.add("tba.alliances");
   }
   return SCORING_SOURCES.filter((source) => sources.has(source));
+}
+
+/** The custom sources a config reads, each one once. */
+export function getApiSources(config: WinnerConfig): ApiSourceSpec[] {
+  const specs = new Map<string, ApiSourceSpec>();
+  for (const measure of Object.values(config.measures)) {
+    if (measure.source === "api") {
+      specs.set(getApiSourceKey(measure.api), measure.api);
+    }
+  }
+  return [...specs.values()];
 }

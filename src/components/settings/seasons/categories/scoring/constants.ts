@@ -194,3 +194,18 @@ export const FIELD_VALUE_LABELS: Partial<
   outcome: { win: "Win", loss: "Loss", tie: "Tie" },
   alliance: { red: "Red", blue: "Blue" },
 };
+
+export const MEASURE_SOURCE_OPTIONS: Option<ScoringSource | "api">[] = [
+  ...SOURCE_OPTIONS,
+  {
+    value: "api",
+    label: "Custom endpoint",
+    description: "An event endpoint of TBA, Statbotics or FRC Events",
+  },
+];
+
+export const API_SERVICE_OPTIONS = [
+  { value: "tba", label: "The Blue Alliance", description: "Paths start with /event/{eventKey}" },
+  { value: "statbotics", label: "Statbotics", description: "Paths include {eventKey}" },
+  { value: "frcEvents", label: "FRC Events", description: "Paths start with /{year}/ and include {eventCode}" },
+] as const satisfies Option<string>[];

@@ -48,3 +48,15 @@ export const categoryWinnerResultValidator = v.union(
     updatedAt: v.number(),
   }),
 );
+
+/** How a custom source measure read an event's data. See `run_config.ts`. */
+export const apiCheckValidator = v.object({
+  measure: v.string(),
+  service: v.string(),
+  path: v.string(),
+  rowCount: v.number(),
+  teamCount: v.number(),
+  valueCount: v.number(),
+  error: v.optional(v.string()),
+  ok: v.boolean(),
+});
