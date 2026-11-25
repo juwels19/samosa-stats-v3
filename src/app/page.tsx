@@ -1,9 +1,17 @@
 import { buttonVariants } from "@heroui/react";
 import { ROUTES } from "@/lib/routes";
+import { auth } from "@clerk/nextjs/server";
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
-export default function Home() {
+export default async function Home() {
+  const { userId } = await auth();
+
+  if (userId) {
+    redirect(ROUTES.DASHBOARD);
+  }
+
   return (
     <div className="px-4 pt-8 pb-10 sm:px-6 sm:pt-12 lg:px-10">
       <div className="grid items-center gap-8 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_560px]">

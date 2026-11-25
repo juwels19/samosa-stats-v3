@@ -2,16 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import { isNavItemActive } from "./constants";
 import { useNavItems } from "./use-nav-items";
 
-/** Tab bar for phones. Hidden from the md breakpoint up. */
+/** Tab bar for phones. Signed-in users only, not on the root page. Hidden from the md breakpoint up. */
 export default function BottomNav() {
   const pathname = usePathname();
   const { isAuthenticated, items } = useNavItems();
 
-  if (!isAuthenticated) return null;
+  if (!isAuthenticated || pathname === ROUTES.HOME) return null;
 
   return (
     <nav

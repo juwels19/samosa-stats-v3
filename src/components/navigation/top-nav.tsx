@@ -2,7 +2,6 @@ import ThemeSwitcher from "@/components/common/theme-switcher";
 import AuthButtons from "@/components/navigation/auth-buttons";
 import HomeIconLink from "@/components/navigation/home-icon-link";
 import NavLinks from "@/components/navigation/nav-links";
-import MobileMenu from "@/components/navigation/mobile-menu";
 
 export default function TopNav() {
   return (
@@ -15,7 +14,6 @@ export default function TopNav() {
         <div className="flex items-center gap-1">
           <ThemeSwitcher />
           <AuthButtons />
-          <MobileMenu />
         </div>
       </div>
     </header>
