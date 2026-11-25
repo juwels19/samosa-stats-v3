@@ -1,8 +1,7 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
-import type { WebhookEvent } from "@clerk/backend";
-import { Webhook } from "svix";
+import { verifyWebhook, type WebhookEvent } from "@clerk/backend/webhooks";
 
 const http = httpRouter();
 
@@ -56,16 +55,8 @@ http.route({
 });
 
 async function validateRequest(req: Request): Promise<WebhookEvent | null> {
-  const payloadString = await req.text();
-  const svixHeaders = {
-    "svix-id": req.headers.get("svix-id")!,
-    "svix-timestamp": req.headers.get("svix-timestamp")!,
-    "svix-signature": req.headers.get("svix-signature")!,
-  };
-  // Needs to use process.env since this is executed on convex
-  const wh = new Webhook(process.env.CLERK_WEBHOOK_SECRET!);
   try {
-    return wh.verify(payloadString, svixHeaders) as unknown as WebhookEvent;
+    return await verifyWebhook(req, { signingSecret: process.env.CLERK_WEBHOOK_SECRET });
   } catch (error) {
     console.error("Error verifying webhook event", error);
     return null;
