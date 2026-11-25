@@ -17,7 +17,7 @@ export default async function ApprovalsPage() {
   const entries = await getWaitlistEntries();
 
   return (
-    <div className="flex flex-col gap-6 px-4 pt-4 pb-6 sm:px-6 sm:pt-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6">
       <div className="flex flex-col gap-2">
         <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">Approvals</h1>
       </div>
