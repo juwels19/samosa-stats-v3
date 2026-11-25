@@ -22,6 +22,8 @@ const wltRecordSchema = z.looseObject({
 // ---------------------------------------------------------------------------
 // Season score breakdowns. Add a schema here for each new game.
 
+// 2026 REBUILT.
+
 const towerRobot2026Schema = z.enum(["Level1", "Level2", "Level3", "None"]);
 
 const hubScore2026Schema = z.looseObject({
@@ -70,10 +72,80 @@ export const tbaAllianceBreakdown2026Schema = z.looseObject({
   traversalAchieved: z.boolean(),
 });
 
+// 2025 REEFSCAPE. From Match_Score_Breakdown_2025_Alliance in the TBA spec.
+
+const autoLineRobot2025Schema = z.enum(["No", "Yes"]);
+const endGameRobot2025Schema = z.enum(["DeepCage", "None", "Parked", "ShallowCage"]);
+
+/** One reef level. Each node is one coral branch, A to L. */
+const reefRow2025Schema = z.looseObject({
+  nodeA: z.boolean(),
+  nodeB: z.boolean(),
+  nodeC: z.boolean(),
+  nodeD: z.boolean(),
+  nodeE: z.boolean(),
+  nodeF: z.boolean(),
+  nodeG: z.boolean(),
+  nodeH: z.boolean(),
+  nodeI: z.boolean(),
+  nodeJ: z.boolean(),
+  nodeK: z.boolean(),
+  nodeL: z.boolean(),
+});
+
+const reef2025Schema = z.looseObject({
+  topRow: reefRow2025Schema,
+  midRow: reefRow2025Schema,
+  botRow: reefRow2025Schema,
+  /** Coral in the trough (level 1). */
+  trough: z.int(),
+  /** TBA's own counts of the coral in each row. Not official. */
+  tba_topRowCount: z.int().optional(),
+  tba_midRowCount: z.int().optional(),
+  tba_botRowCount: z.int().optional(),
+});
+
+export const tbaAllianceBreakdown2025Schema = z.looseObject({
+  adjustPoints: z.int().optional(),
+  algaePoints: z.int(),
+  autoBonusAchieved: z.boolean().optional(),
+  autoCoralCount: z.int(),
+  autoCoralPoints: z.int(),
+  autoLineRobot1: autoLineRobot2025Schema,
+  autoLineRobot2: autoLineRobot2025Schema,
+  autoLineRobot3: autoLineRobot2025Schema,
+  autoMobilityPoints: z.int(),
+  autoPoints: z.int(),
+  autoReef: reef2025Schema,
+  bargeBonusAchieved: z.boolean().optional(),
+  coopertitionCriteriaMet: z.boolean().optional(),
+  coralBonusAchieved: z.boolean().optional(),
+  endGameBargePoints: z.int(),
+  endGameRobot1: endGameRobot2025Schema,
+  endGameRobot2: endGameRobot2025Schema,
+  endGameRobot3: endGameRobot2025Schema,
+  foulCount: z.int(),
+  foulPoints: z.int(),
+  g206Penalty: z.boolean(),
+  g410Penalty: z.boolean(),
+  g418Penalty: z.boolean(),
+  g428Penalty: z.boolean(),
+  netAlgaeCount: z.int(),
+  rp: z.number(),
+  techFoulCount: z.int(),
+  teleopCoralCount: z.int(),
+  teleopCoralPoints: z.int(),
+  teleopPoints: z.int(),
+  teleopReef: reef2025Schema,
+  totalPoints: z.int(),
+  wallAlgaeCount: z.int(),
+});
+
 /** For seasons with no breakdown schema yet. */
 export const unknownBreakdownSchema = z.record(z.string(), z.unknown());
 
 export const tbaBreakdownSchemas = {
+  2025: tbaAllianceBreakdown2025Schema,
   2026: tbaAllianceBreakdown2026Schema,
 } as const;
 

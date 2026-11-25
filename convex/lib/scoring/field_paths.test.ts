@@ -169,3 +169,24 @@ it("types the 2026 Statbotics breakdown", () => {
     ScoringEventData<2026>["sources"]["statbotics.teamEvents"][number]["epa"]["breakdown"]["auto_fuel"]
   >().toEqualTypeOf<number>();
 });
+
+describe("listFieldPaths for 2025", () => {
+  it("lists the typed REEFSCAPE fields", () => {
+    const tba = listFieldPaths("tba.matches", 2025);
+    expect(tba.paths).toEqual(
+      expect.arrayContaining([
+        "breakdown.endGameRobot{n}",
+        "breakdown.teleopReef.topRow.nodeA",
+        "breakdown.autoReef.trough",
+      ]),
+    );
+    expect(tba.valueOptions["breakdown.endGameRobot{n}"]).toEqual([
+      "DeepCage",
+      "None",
+      "Parked",
+      "ShallowCage",
+    ]);
+    expect(listFieldPaths("statbotics.teamEvents", 2025).paths).toContain("epa.breakdown.coral_l4");
+    expect(listFieldPaths("statbotics.matches", 2025).paths).toContain("result.barge_points");
+  });
+});

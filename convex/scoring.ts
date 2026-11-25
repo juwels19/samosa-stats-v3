@@ -1,15 +1,12 @@
 import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
-import type { Doc, Id } from "./_generated/dataModel";
 import {
   action,
   internalMutation,
   internalQuery,
   mutation,
   query,
-  type MutationCtx,
-  type QueryCtx,
 } from "./_generated/server";
 import { getDataEventCode } from "./lib/events/data";
 import { categoryValidator, eventStatusValidator } from "./lib/events/validators";
@@ -33,8 +30,18 @@ import {
 import {
   apiCheckValidator,
   categoryWinnerResultValidator,
+  resultsStatusValidator,
   teamWinnerResultValidator,
 } from "./lib/scoring/validators";
+import {
+  getCategoryWinnersRow,
+  getEventCategories,
+  getEventTeams,
+  assertResultsNotFinal,
+  getResultsStatus,
+  resultMatchesSource,
+  upsertCategoryWinners,
+} from "./lib/scoring/event_db";
 import { getCurrentUser } from "./users";
 
 export const currentUserIsAdmin = internalQuery({
@@ -116,6 +123,7 @@ export const getEventScoring = query({
         eventCode: v.string(),
         status: eventStatusValidator,
         year: v.number(),
+        resultsStatus: resultsStatusValidator,
       }),
       submissionCount: v.number(),
       teams: v.array(v.object({ number: v.number(), name: v.string() })),
@@ -140,7 +148,7 @@ export const getEventScoring = query({
       throw new Error("The event's season was not found.");
     }
 
-    const [categories, picks, winnerRows, teams] = await Promise.all([
+    const [categories, picks, winnerRows, teams, resultsStatus] = await Promise.all([
       getEventCategories(ctx, event),
       ctx.db
         .query("picks")
@@ -151,6 +159,7 @@ export const getEventScoring = query({
         .withIndex("byEvent", (q) => q.eq("event", event._id))
         .collect(),
       getEventTeams(ctx, event._id),
+      getResultsStatus(ctx, event._id),
     ]);
 
     const { values } = getCategoryValues({
@@ -169,6 +178,7 @@ export const getEventScoring = query({
         eventCode: event.eventCode,
         status: event.status,
         year: season.year,
+        resultsStatus,
       },
       submissionCount: picks.length,
       teams: teams.toSorted((a, b) => a.number - b.number),
@@ -194,6 +204,7 @@ export const getCalculationInput = internalQuery({
   args: { eventId: v.id("events") },
   returns: v.object({
     isAdmin: v.boolean(),
+    isFinal: v.boolean(),
     year: v.number(),
     eventCode: v.string(),
     teams: v.array(v.number()),
@@ -212,13 +223,15 @@ export const getCalculationInput = internalQuery({
       throw new Error("The event's season was not found.");
     }
 
-    const [categories, teams] = await Promise.all([
+    const [categories, teams, resultsStatus] = await Promise.all([
       getEventCategories(ctx, event),
       getEventTeams(ctx, event._id),
+      getResultsStatus(ctx, event._id),
     ]);
 
     return {
       isAdmin: currentUser?.isAdmin ?? false,
+      isFinal: resultsStatus === "final",
       year: season.year,
       eventCode: getDataEventCode(event),
       teams: teams.map((team) => team.number),
@@ -253,6 +266,10 @@ export const saveCalculatedWinners = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    // The results can become final while the action runs.
+    if ((await getResultsStatus(ctx, args.eventId)) === "final") {
+      return null;
+    }
     for (const { categoryId, ...outcome } of args.outcomes) {
       // The category can change to manual while the action runs.
       const category = await ctx.db.get(categoryId);
@@ -271,23 +288,29 @@ export const saveCalculatedWinners = internalMutation({
 
 /**
  * Gets the latest TBA and Statbotics data for an event and saves the winners
- * of each automatic category. Manual categories do not change.
+ * of each automatic category. Manual categories do not change. Also saves the
+ * event's TBA awards, for the award deduction.
  */
 export const calculateEventWinners = action({
   args: { eventId: v.id("events") },
-  returns: v.object({ calculated: v.number(), errors: v.number() }),
+  returns: v.object({
+    calculated: v.number(),
+    errors: v.number(),
+    /** The awards error, or null when the awards were saved. */
+    awardsError: v.union(v.string(), v.null()),
+  }),
   handler: async (
     ctx,
     args,
-  ): Promise<{ calculated: number; errors: number }> => {
+  ): Promise<{ calculated: number; errors: number; awardsError: string | null }> => {
     const input = await ctx.runQuery(internal.scoring.getCalculationInput, {
       eventId: args.eventId,
     });
     if (!input.isAdmin) {
       throw new Error("Only admins can calculate category winners.");
     }
-    if (input.categories.length === 0) {
-      return { calculated: 0, errors: 0 };
+    if (input.isFinal) {
+      throw new Error("The results are final. Reopen them to calculate winners again.");
     }
     if (input.teams.length === 0) {
       throw new Error("Load the event's teams first.");
@@ -299,7 +322,7 @@ export const calculateEventWinners = action({
         year: input.year,
         eventCode: input.eventCode,
         teams: input.teams,
-        sources: getSourcesForConfigs(configs),
+        sources: [...new Set([...getSourcesForConfigs(configs), "tba.awards" as const])],
       }),
       loadApiSourceRows({
         year: input.year,
@@ -307,6 +330,28 @@ export const calculateEventWinners = action({
         specs: getApiSourcesForConfigs(configs),
       }),
     ]);
+
+    const awards = sourceRows.rows["tba.awards"];
+    if (awards !== undefined) {
+      await ctx.runMutation(internal.results.saveEventAwards, {
+        eventId: args.eventId,
+        fetchedAt: Date.now(),
+        rows: awards.flatMap((row) =>
+          typeof row.team === "number" && typeof row.awardType === "number"
+            ? [{ team: row.team, awardType: row.awardType }]
+            : [],
+        ),
+      });
+    }
+    const awardsError =
+      awards === undefined
+        ? (sourceRows.failures.get("tba.awards") ?? "The awards could not be loaded.")
+        : null;
+
+    if (input.categories.length === 0) {
+      return { calculated: 0, errors: 0, awardsError };
+    }
+
     const outcomes = findEventCategoryWinners({
       categories: input.categories,
       teams: input.teams,
@@ -320,7 +365,7 @@ export const calculateEventWinners = action({
     });
 
     const errors = outcomes.filter((outcome) => outcome.type === "error");
-    return { calculated: outcomes.length - errors.length, errors: errors.length };
+    return { calculated: outcomes.length - errors.length, errors: errors.length, awardsError };
   },
 });
 
@@ -354,6 +399,7 @@ export const setManualWinners = mutation({
     if (category.winnerSource?.type !== "manual") {
       throw new Error("Only manual categories take winners from an admin.");
     }
+    await assertResultsNotFinal(ctx, event._id);
 
     const eventTeams = await getEventTeams(ctx, event._id);
     const winners = checkManualWinners(
@@ -378,70 +424,6 @@ export const setManualWinners = mutation({
     return null;
   },
 });
-
-async function getEventCategories(ctx: QueryCtx, event: Doc<"events">) {
-  const categories = await Promise.all(
-    event.categories.map((categoryId) => ctx.db.get(categoryId)),
-  );
-  return categories.filter((category) => category !== null);
-}
-
-async function getEventTeams(ctx: QueryCtx, eventId: Id<"events">) {
-  const eventTeams = await ctx.db
-    .query("eventTeams")
-    .withIndex("byEvent", (q) => q.eq("event", eventId))
-    .collect();
-  const teams = await Promise.all(
-    eventTeams.map((eventTeam) => ctx.db.get(eventTeam.team)),
-  );
-  return teams
-    .filter((team) => team !== null)
-    .map((team) => ({ number: Number(team.number), name: team.name }));
-}
-
-async function getCategoryWinnersRow(
-  ctx: QueryCtx,
-  eventId: Id<"events">,
-  categoryId: Id<"categories">,
-) {
-  return await ctx.db
-    .query("categoryWinners")
-    .withIndex("byEventAndCategory", (q) =>
-      q.eq("event", eventId).eq("category", categoryId),
-    )
-    .unique();
-}
-
-async function upsertCategoryWinners(
-  ctx: MutationCtx,
-  eventId: Id<"events">,
-  categoryId: Id<"categories">,
-  result: Doc<"categoryWinners">["result"],
-) {
-  const existing = await getCategoryWinnersRow(ctx, eventId, categoryId);
-  if (existing === null) {
-    await ctx.db.insert("categoryWinners", {
-      event: eventId,
-      category: categoryId,
-      result,
-    });
-  } else {
-    await ctx.db.patch(existing._id, { result });
-  }
-}
-
-/** A saved result counts only while the category keeps the same source. */
-function resultMatchesSource(
-  result: Doc<"categoryWinners">["result"] | null,
-  winnerSource: Doc<"categories">["winnerSource"],
-) {
-  if (result === null || winnerSource === undefined) {
-    return false;
-  }
-  return winnerSource.type === "manual"
-    ? result.type === "manual"
-    : result.type === "config" || result.type === "error";
-}
 
 export const getGenerationInput = internalQuery({
   args: { categoryId: v.id("categories") },

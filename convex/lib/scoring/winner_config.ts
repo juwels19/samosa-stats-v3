@@ -1,5 +1,7 @@
 import * as z from "zod";
 
+import { getReferencedMeasures, type ValueExpression } from "./formula";
+
 import {
   apiSourceSpecSchema,
   getApiSourceKey,
@@ -87,15 +89,30 @@ const apiMeasureSchema = z
 
 const measureSchema = z.union([typedMeasureSchema, apiMeasureSchema]);
 
-const operandSchema = z.union([z.string().trim().min(1), z.number()]);
+/**
+ * One operation in a formula. Each side is a measure name, a number or
+ * another operation, so a formula can have many parts. See `formula.ts`.
+ */
+const calculationSchema = z.object({
+  op: z.enum(["add", "subtract", "multiply", "divide"]),
+  get left(): z.ZodType<ValueExpression> {
+    return expressionSchema;
+  },
+  get right(): z.ZodType<ValueExpression> {
+    return expressionSchema;
+  },
+});
 
+const expressionSchema: z.ZodType<ValueExpression> = z.union([
+  z.string().trim().min(1, { message: "Choose a measure for each part of the formula." }),
+  z.number(),
+  calculationSchema,
+]);
+
+/** One measure name, or a formula of measures and numbers. */
 const valueSchema = z.union([
-  z.string().trim().min(1),
-  z.object({
-    op: z.enum(["add", "subtract", "multiply", "divide"]),
-    left: operandSchema,
-    right: operandSchema,
-  }),
+  z.string().trim().min(1, { message: "Choose the measure to compare teams by." }),
+  calculationSchema,
 ]);
 
 const orderSchema = z.enum(["desc", "asc"]);
@@ -151,14 +168,8 @@ export const winnerConfigSchema = z
       });
     }
 
-    const references =
-      typeof config.value === "string"
-        ? [config.value]
-        : [config.value.left, config.value.right].filter(
-            (operand): operand is string => typeof operand === "string",
-          );
-
-    for (const reference of references) {
+    // Each missing name once, even when the formula uses it more than once.
+    for (const reference of new Set(getReferencedMeasures(config.value))) {
       if (!names.includes(reference)) {
         ctx.addIssue({
           code: "custom",

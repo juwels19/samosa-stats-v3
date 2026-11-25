@@ -9,7 +9,7 @@ import { compLevelSchema } from "./tba";
  * - the team's own EPA before (`preEpa`) and after (`epa`) the match
  * - its alliance's result and prediction, with `red_`/`blue_` removed
  * - the opponent alliance's result
- * Schemas come from real 2026 responses.
+ * Schemas come from real 2025 and 2026 responses.
  */
 
 const allianceColorSchema = z.enum(["red", "blue"]);
@@ -29,7 +29,8 @@ const teamMatchEpaFields = {
   tiebreaker_epa: z.number(),
 };
 
-export const statboticsTeamMatchEpa2026Schema = z.looseObject({
+/** 2025 and 2026 both have 10 game-specific EPA components. */
+const statboticsTeamMatchEpaWithComponentsSchema = z.looseObject({
   ...teamMatchEpaFields,
   comp_0_epa: z.number(),
   comp_1_epa: z.number(),
@@ -43,6 +44,47 @@ export const statboticsTeamMatchEpa2026Schema = z.looseObject({
   comp_9_epa: z.number(),
 });
 
+export const statboticsTeamMatchEpa2025Schema = statboticsTeamMatchEpaWithComponentsSchema;
+export const statboticsTeamMatchEpa2026Schema = statboticsTeamMatchEpaWithComponentsSchema;
+
+/** 2025 REEFSCAPE. */
+export const statboticsMatchResult2025Schema = z.looseObject({
+  score: z.number(),
+  no_foul: z.number(),
+  auto_points: z.number(),
+  teleop_points: z.number(),
+  endgame_points: z.number(),
+  tiebreaker_points: z.number(),
+  auto_coral_points: z.number(),
+  teleop_coral_points: z.number(),
+  coral_l1: z.number(),
+  coral_l2: z.number(),
+  coral_l3: z.number(),
+  coral_l4: z.number(),
+  processor_algae: z.number(),
+  processor_algae_points: z.number(),
+  net_algae_points: z.number(),
+  barge_points: z.number(),
+  auto_rp: z.boolean(),
+  coral_rp: z.boolean(),
+  barge_rp: z.boolean(),
+  rp_1: z.boolean(),
+  rp_2: z.boolean(),
+  rp_3: z.boolean(),
+});
+
+export const statboticsMatchPred2025Schema = z.looseObject({
+  score: z.number(),
+  win_prob: z.number(),
+  auto_rp: z.number(),
+  coral_rp: z.number(),
+  barge_rp: z.number(),
+  rp_1: z.number(),
+  rp_2: z.number(),
+  rp_3: z.number(),
+});
+
+/** 2026 REBUILT. */
 export const statboticsMatchResult2026Schema = z.looseObject({
   score: z.number(),
   no_foul: z.number(),
@@ -79,6 +121,11 @@ export const statboticsMatchPred2026Schema = z.looseObject({
 const unknownRecordSchema = z.record(z.string(), z.unknown());
 
 const seasonSchemas = {
+  2025: {
+    epa: statboticsTeamMatchEpa2025Schema,
+    result: statboticsMatchResult2025Schema,
+    pred: statboticsMatchPred2025Schema,
+  },
   2026: {
     epa: statboticsTeamMatchEpa2026Schema,
     result: statboticsMatchResult2026Schema,

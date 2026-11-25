@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Modal, Spinner, toast } from "@heroui/react";
+import { Button, Description, Label, Modal, Spinner, TextArea, TextField, toast } from "@heroui/react";
 import { useMutation } from "convex/react";
 import { CheckCircle2Icon, DownloadIcon, FileUpIcon, Globe2Icon, TriangleAlertIcon } from "lucide-react";
 import { useRef, useState, type DragEvent } from "react";
@@ -23,6 +23,7 @@ export default function ImportCategories({
 }) {
   const [open, setOpen] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [pastedText, setPastedText] = useState("");
   const [rows, setRows] = useState<CsvCategoryRow[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -35,6 +36,7 @@ export default function ImportCategories({
 
   function reset() {
     setFileName(null);
+    setPastedText("");
     setRows([]);
     setFileError(null);
     if (inputRef.current) inputRef.current.value = "";
@@ -55,6 +57,22 @@ export default function ImportCategories({
     }
     const result = parseCategoriesCsv(await file.text(), existingTexts);
     setFileName(file.name);
+    setPastedText("");
+    setRows(result.rows);
+    setFileError(result.error);
+  }
+
+  /** Parses pasted CSV text as it is typed. A file choice clears it. */
+  function handlePaste(text: string) {
+    setPastedText(text);
+    setFileName(null);
+    if (inputRef.current) inputRef.current.value = "";
+    if (text.trim() === "") {
+      setRows([]);
+      setFileError(null);
+      return;
+    }
+    const result = parseCategoriesCsv(text, existingTexts);
     setRows(result.rows);
     setFileError(result.error);
   }
@@ -110,9 +128,9 @@ export default function ImportCategories({
               <Modal.Heading>Import categories</Modal.Heading>
               <p className="text-sm text-muted">
                 Columns: <span className="font-medium text-foreground">category</span>,{" "}
-                <span className="font-medium text-foreground">scoring</span> and{" "}
-                <span className="font-medium text-foreground">global</span> (yes or no). You
-                cannot change categories after you import them.
+                <span className="font-medium text-foreground">global</span> (yes or no) and{" "}
+                <span className="font-medium text-foreground">scoring</span> (optional). You can
+                add or change scoring descriptions later.
               </p>
             </Modal.Header>
 
@@ -147,6 +165,16 @@ export default function ImportCategories({
                   }}
                 />
               </label>
+
+              <TextField fullWidth value={pastedText} onChange={handlePaste}>
+                <Label>Or paste CSV text</Label>
+                <TextArea
+                  rows={4}
+                  className="font-mono text-xs"
+                  placeholder={"Robot tips over in a match,yes,Each picked robot that tips over\nDeep climb in a playoff match,no"}
+                />
+                <Description>One category on each line. A header row is optional.</Description>
+              </TextField>
 
               <a
                 href={TEMPLATE_HREF}

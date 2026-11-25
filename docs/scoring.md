@@ -48,7 +48,7 @@ A config has 4 parts:
 | `teams` | The teams that can win: `all`, `inEliminations`, `notInEliminations` or `captains` |
 | `matches` | The matches that `tba.matches` and `statbotics.matches` read: `qualification` (default), `playoffs` or `all`. Practice matches never count |
 | `measures` | One or more named values for each team. Each measure reads one source, keeps the rows that match its `where` filters, then applies `value`, `sum`, `avg`, `max`, `min` or `count` to a field |
-| `value` | One measure, or `add`, `subtract`, `multiply` or `divide` on 2 measures or numbers |
+| `value` | One measure, or a formula of measures and numbers. See [Formulas](#formulas) |
 | `select` | The rule that picks the winners from the values |
 
 A filter can name another source. The measure then keeps only teams that have at least one row in that source that matches the filter. For example, a `tba.matches` count with the filter `tba.alliances` `role = captain` counts matches only for alliance captains. All filters on the same other source must match one row of that source. For example, `outcome = loss`, `compLevel = sf` and `setNumber` in 1 to 4 on `tba.matches` find a team that lost a round 1 playoff match. A team that fails such a filter gets 0 from `count` and `sum`, and no value from the other operations.
@@ -57,7 +57,7 @@ Sources: `tba.matches`, `tba.rankings`, `tba.alliances`, `tba.awards`, `statboti
 
 `statbotics.matches` has one row for each team in each match. Each row has the team's EPA before (`preEpa`) and after (`epa`) the match, and its alliance's `result` and `pred` (prediction) without the `red_`/`blue_` prefix. It also has `opponentResult`. Statbotics has no other per-team match data. The `matches` setting applies to both match sources. The adapters in `convex/lib/scoring/sources/` check all source data with Zod schemas.
 
-Each season with a breakdown schema has strongly typed fields. When you save a config, each field path is checked against the season's schema. A season with no breakdown schema accepts any path under `breakdown` (TBA) or `epa.breakdown` (Statbotics). To support a new game, add its breakdown schemas to `tbaBreakdownSchemas` and `statboticsBreakdownSchemas`.
+Each season with a breakdown schema has strongly typed fields. When you save a config, each field path is checked against the season's schema. A season with no breakdown schema accepts any path under `breakdown` (TBA) or `epa.breakdown` (Statbotics). Schemas exist for 2025 (REEFSCAPE) and 2026 (REBUILT). To support a new game, add its breakdown schemas to `tbaBreakdownSchemas` and `statboticsBreakdownSchemas`, and its match schemas to `seasonSchemas` in `statbotics_matches.ts`.
 
 In `tba.matches`, each row is one team in one match. A `{n}` in a field path changes to the team's robot position in its alliance, for example `breakdown.endGameRobot{n}`.
 
@@ -71,6 +71,12 @@ Select rules:
 | `equals` | All teams with a value equal to a number |
 
 A team can't win when it is outside `teams`, when a measure has no data for it, or when its value divides by zero. The preview shows each team's measures, value and reason.
+
+#### Formulas
+
+In the builder, a formula is text, for example `(auto - teleop) / matches * 100`. It can use measure names, numbers, `+ - * /` (or `× ÷ −`) and parentheses. `*` and `/` come before `+` and `-`. The parser is in `convex/lib/scoring/formula.ts`.
+
+A formula is stored as a tree of operations. Each operation has `op` (`add`, `subtract`, `multiply` or `divide`), `left` and `right`. Each side is a measure name, a number or another operation. A config from before formulas, with one operation on 2 measures or numbers, is a short formula and still works.
 
 Example, "3rd highest ratio of auto points to total points":
 
@@ -153,6 +159,18 @@ This deduction discourages picks of very common or well known teams. It goes to 
 2. If submissions tie, sort the `picks(t)` values of each tied submission from highest to lowest. Compare the first values. The submission with the higher value gets the deduction.
 3. If the first values are the same, compare the second values, then the third, and so on.
 4. If all values are the same, all tied submissions get the deduction.
+
+### Results status
+
+Event results are **draft** until an admin finalizes them on the event's Scores page (`convex/results.ts`).
+
+- While draft, scores are calculated live from the current picks, winners and awards (`convex/lib/scoring/event_scores.ts`).
+- **Calculate winners** also saves all of the event's TBA awards. The award deduction uses the winners of the season's deduction award from these.
+- **Finalize** saves each submission's score and line items in `eventScores`, and the values used in `eventResults.final`. Winners are then locked: manual winners and Calculate winners are refused.
+- Finalize is refused until the event is COMPLETE, the season has a deduction award, the awards are loaded and every category has winners.
+- **Reopen** deletes the saved scores and makes the results draft again.
+
+A change to the deduction award does not change a final event, because its scores are saved.
 
 ## Standings
 

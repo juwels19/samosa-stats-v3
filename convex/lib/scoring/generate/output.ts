@@ -1,5 +1,6 @@
 import * as z from "zod";
 
+import { parseFormula } from "../formula";
 import { API_SERVICES } from "../sources/api_source";
 import {
   MATCH_SCOPES,
@@ -47,10 +48,13 @@ export const configOutputSchema = z.object({
   matches: z.enum(MATCH_SCOPES),
   measures: z.array(measureOutputSchema).min(1),
   value: z.object({
-    measure: z.string().nullable().describe("One measure name, or null for a calculation."),
-    op: z.enum(["add", "subtract", "multiply", "divide"]).nullable(),
-    left: z.union([z.string(), z.number()]).nullable(),
-    right: z.union([z.string(), z.number()]).nullable(),
+    measure: z.string().nullable().describe("One measure name, or null for a formula."),
+    formula: z
+      .string()
+      .nullable()
+      .describe(
+        "When measure is null: a formula of measure names, numbers, + - * / and parentheses, for example (auto - teleop) / matches * 100.",
+      ),
   }),
   select: z.object({
     type: z.enum(["nth", "top", "threshold", "equals"]),
@@ -73,6 +77,12 @@ export const generationOutputSchema = z.object({
 });
 
 export type GenerationOutput = z.infer<typeof generationOutputSchema>;
+
+/** A formula that can't be read is kept as text. `checkConfigOutput` reports it. */
+function toFormulaValue(formula: string): WinnerConfigInput["value"] {
+  const parsed = parseFormula(formula);
+  return parsed.ok && typeof parsed.expression !== "number" ? parsed.expression : formula;
+}
 
 export function toConfigInput(output: ConfigOutput): WinnerConfigInput {
   const { select, value } = output;
@@ -103,14 +113,7 @@ export function toConfigInput(output: ConfigOutput): WinnerConfigInput {
         ];
       }),
     ),
-    value:
-      value.measure !== null
-        ? value.measure
-        : {
-            op: value.op ?? "divide",
-            left: value.left ?? "",
-            right: value.right ?? "",
-          },
+    value: value.measure ?? toFormulaValue(value.formula ?? ""),
     select:
       select.type === "nth" || select.type === "top"
         ? { type: select.type, n: select.n ?? 1, order: select.order ?? "desc" }

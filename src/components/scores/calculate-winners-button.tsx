@@ -23,6 +23,9 @@ export default function CalculateWinnersButton({
     setIsRunning(true);
     try {
       const result = await calculate({ eventId });
+      if (result.awardsError !== null) {
+        toast.warning("Awards not loaded", { description: result.awardsError });
+      }
       if (result.errors > 0) {
         toast.warning("Some winners not calculated", {
           description: `${result.calculated} calculated, ${result.errors} failed. See each category for the error.`,

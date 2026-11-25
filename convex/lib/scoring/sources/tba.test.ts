@@ -1,5 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
+import matches2025 from "./fixtures/tba_matches_2025onosh.json";
 import {
   toTbaAllianceRows,
   toTbaAwardRows,
@@ -116,6 +117,23 @@ describe("toTbaMatchRows", () => {
       .exclude<null>()
       .toHaveProperty("endGameTowerRobot1")
       .toEqualTypeOf<"Level1" | "Level2" | "Level3" | "None">();
+  });
+
+  it("parses real 2025 matches", () => {
+    const rows = toTbaMatchRows(matches2025, 2025);
+
+    expect(rows).toHaveLength(matches2025.length * 6);
+    const breakdown = rows[0].breakdown;
+    expect(breakdown?.teleopReef.topRow.nodeA).toBeTypeOf("boolean");
+    expect(breakdown?.autoReef.trough).toBeTypeOf("number");
+    expect(["DeepCage", "None", "Parked", "ShallowCage"]).toContain(breakdown?.endGameRobot1);
+  });
+
+  it("types the 2025 breakdown", () => {
+    expectTypeOf<TbaMatchRow<2025>["breakdown"]>()
+      .exclude<null>()
+      .toHaveProperty("endGameRobot1")
+      .toEqualTypeOf<"DeepCage" | "None" | "Parked" | "ShallowCage">();
   });
 
   it("marks a tie and a surrogate", () => {

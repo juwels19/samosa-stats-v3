@@ -7,6 +7,8 @@ import {
 } from "./lib/mocks/validators";
 import {
   categoryWinnerResultValidator,
+  eventResultsFields,
+  eventScoreFields,
   winnerSourceValidator,
 } from "./lib/scoring/validators";
 
@@ -122,6 +124,10 @@ export default defineSchema({
   })
     .index("byEvent", ["event"])
     .index("byEventAndCategory", ["event", "category"]),
+  /** The results status of an event, its TBA awards and its final values. */
+  eventResults: defineTable(eventResultsFields).index("byEvent", ["event"]),
+  /** Each submission's score, saved when the results are finalized. */
+  eventScores: defineTable(eventScoreFields).index("byEvent", ["event"]),
   /** App-wide AI settings that admins change. One row; defaults when empty. */
   aiSettings: defineTable({
     displayNameSuggestions: v.object({ enabled: v.boolean() }),

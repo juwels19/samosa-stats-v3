@@ -9,6 +9,7 @@ import SettingsPageHeader from "@/components/settings/common/settings-page-heade
 import { api } from "../../../convex/_generated/api";
 import EventStatusDot from "@/components/settings/seasons/events/event-status-dot";
 import CalculateWinnersButton from "./calculate-winners-button";
+import EventResults from "./event-results";
 import ScoringCategoryCard from "./scoring-category-card";
 import {
   getLastCalculatedAt,
@@ -56,6 +57,7 @@ function EventScoringContent({ data }: { data: EventScoringData }) {
   const { event, teams, categories, submissionCount } = data;
   const groups = groupScoringCategories(categories);
   const lastCalculatedAt = getLastCalculatedAt(categories);
+  const isFinal = event.resultsStatus === "final";
 
   return (
     <div className="flex flex-col gap-6">
@@ -67,7 +69,7 @@ function EventScoringContent({ data }: { data: EventScoringData }) {
         action={
           <CalculateWinnersButton
             eventId={event._id}
-            isDisabled={groups.automatic.length === 0}
+            isDisabled={isFinal}
           />
         }
       />
@@ -81,6 +83,8 @@ function EventScoringContent({ data }: { data: EventScoringData }) {
         </span>
       </div>
 
+      <EventResults eventId={event._id} teams={teams} categories={categories} />
+
       {teams.length === 0 ? (
         <p className="rounded-2xl bg-warning-soft p-4 text-sm text-warning-soft-foreground">
           This event has no teams. Refresh its teams on the Events page before
@@ -90,10 +94,11 @@ function EventScoringContent({ data }: { data: EventScoringData }) {
 
       <CategoryGroup
         title="Automatic"
-        description="Winners come from TBA and Statbotics data. Calculate again to get the latest results."
+        description="Winners come from TBA and Statbotics data. Calculate again to get the latest results and awards."
         categories={groups.automatic}
         teams={teams}
         eventId={event._id}
+        isLocked={isFinal}
       />
       <CategoryGroup
         title="Manual"
@@ -101,6 +106,7 @@ function EventScoringContent({ data }: { data: EventScoringData }) {
         categories={groups.manual}
         teams={teams}
         eventId={event._id}
+        isLocked={isFinal}
       />
       <CategoryGroup
         title="Not set up"
@@ -108,6 +114,7 @@ function EventScoringContent({ data }: { data: EventScoringData }) {
         categories={groups.notSetUp}
         teams={teams}
         eventId={event._id}
+        isLocked={isFinal}
       />
     </div>
   );
@@ -119,12 +126,14 @@ function CategoryGroup({
   categories,
   teams,
   eventId,
+  isLocked,
 }: {
   title: string;
   description: string;
   categories: EventScoringCategory[];
   teams: EventScoringData["teams"];
   eventId: EventScoringData["event"]["_id"];
+  isLocked: boolean;
 }) {
   if (categories.length === 0) return null;
 
@@ -146,6 +155,7 @@ function CategoryGroup({
             category={category}
             teams={teams}
             eventId={eventId}
+            isLocked={isLocked}
           />
         ))}
       </ul>

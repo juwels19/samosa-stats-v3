@@ -1,4 +1,8 @@
 import { findUnknownFields } from "../../../../../../convex/lib/scoring/field_paths";
+import {
+  formatFormula,
+  parseFormula,
+} from "../../../../../../convex/lib/scoring/formula";
 import type { ApiService } from "../../../../../../convex/lib/scoring/sources/api_source";
 import {
   winnerConfigSchema,
@@ -10,7 +14,6 @@ import {
   type WinnerConfigInput,
 } from "../../../../../../convex/lib/scoring/winner_config";
 import type {
-  CALCULATION_OP_OPTIONS,
   FILTER_OP_OPTIONS,
   MEASURE_OP_OPTIONS,
   ORDER_OPTIONS,
@@ -61,9 +64,8 @@ export type ScoringFormValues = {
   measures: MeasureFormValues[];
   valueMode: OptionValue<typeof VALUE_MODE_OPTIONS>;
   valueMeasure: string;
-  calculationOp: OptionValue<typeof CALCULATION_OP_OPTIONS>;
-  left: string;
-  right: string;
+  /** For a calculation, for example `(auto - teleop) / matches`. */
+  formula: string;
   selectType: OptionValue<typeof SELECT_TYPE_OPTIONS>;
   n: string;
   order: OptionValue<typeof ORDER_OPTIONS>;
@@ -94,9 +96,7 @@ export const DEFAULT_FORM_VALUES: ScoringFormValues = {
   measures: [DEFAULT_MEASURE],
   valueMode: "measure",
   valueMeasure: "rank",
-  calculationOp: "divide",
-  left: "",
-  right: "",
+  formula: "",
   selectType: "nth",
   n: "1",
   order: "asc",
@@ -156,9 +156,7 @@ export function toFormValues(winnerSource: WinnerSource): ScoringFormValues {
       ? { valueMode: "measure", valueMeasure: config.value }
       : {
           valueMode: "calculation",
-          calculationOp: config.value.op,
-          left: String(config.value.left),
-          right: String(config.value.right),
+          formula: formatFormula(config.value),
         }),
     selectType: select.type,
     ...(select.type === "nth" || select.type === "top"
@@ -179,13 +177,6 @@ function parseScalar(text: string): string | number | boolean {
   if (trimmed !== "" && Number.isFinite(Number(trimmed)))
     return Number(trimmed);
   return trimmed;
-}
-
-function parseOperand(text: string): string | number {
-  const trimmed = text.trim();
-  return trimmed !== "" && Number.isFinite(Number(trimmed))
-    ? Number(trimmed)
-    : trimmed;
 }
 
 function parseNumber(text: string) {
@@ -251,16 +242,16 @@ export function toWinnerConfigInput(
         },
       ]),
     ),
-    value:
-      values.valueMode === "measure"
-        ? values.valueMeasure
-        : {
-            op: values.calculationOp,
-            left: parseOperand(values.left),
-            right: parseOperand(values.right),
-          },
+    value: toValueInput(values),
     select,
   };
+}
+
+/** A formula that can't be read is kept as text, and `checkConfig` reports it. */
+function toValueInput(values: ScoringFormValues): WinnerConfigInput["value"] {
+  if (values.valueMode === "measure") return values.valueMeasure;
+  const parsed = parseFormula(values.formula);
+  return parsed.ok && typeof parsed.expression !== "number" ? parsed.expression : values.formula;
 }
 
 export type ConfigCheck =
@@ -280,6 +271,20 @@ export function checkConfig(
       config: null,
       issues: [`Two measures are named "${duplicate}". Use different names.`],
     };
+  }
+
+  if (values.valueMode === "calculation") {
+    const formula = parseFormula(values.formula);
+    if (!formula.ok) {
+      return { ok: false, config: null, issues: [`Formula: ${formula.message}`] };
+    }
+    if (typeof formula.expression === "number") {
+      return {
+        ok: false,
+        config: null,
+        issues: ["Formula: use at least one measure, or every team gets the same value."],
+      };
+    }
   }
 
   const parsed = winnerConfigSchema.safeParse(toWinnerConfigInput(values));

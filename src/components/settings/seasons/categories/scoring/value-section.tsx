@@ -1,14 +1,18 @@
 "use client";
 
-import { Input, Label, TextField } from "@heroui/react";
+import { Button, Description, FieldError, Input, Label, TextField } from "@heroui/react";
 import { Controller, useWatch, type Control } from "react-hook-form";
 
-import { CALCULATION_OP_OPTIONS, VALUE_MODE_OPTIONS } from "./constants";
+import {
+  getReferencedMeasures,
+  parseFormula,
+} from "../../../../../../convex/lib/scoring/formula";
+import { VALUE_MODE_OPTIONS } from "./constants";
 import type { ScoringFormValues } from "./form-values";
 import { AiMark } from "./ai-marks";
 import OptionSelect from "./option-select";
 
-/** The value each team is ranked by: one measure, or a calculation. */
+/** The value each team is ranked by: one measure, or a formula. */
 export default function ValueSection({
   control,
 }: {
@@ -59,60 +63,89 @@ export default function ValueSection({
               )}
             />
           ) : (
-            <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-end">
-              <Controller
-                control={control}
-                name="left"
-                render={({ field }) => (
-                  <TextField
-                    fullWidth
-                    value={field.value}
-                    onChange={field.onChange}
-                  >
-                    <Label>Left</Label>
-                    <Input
-                      placeholder="Measure name or number"
-                      autoComplete="off"
-                      className="font-mono text-sm"
-                    />
-                  </TextField>
-                )}
-              />
-              <Controller
-                control={control}
-                name="calculationOp"
-                render={({ field }) => (
-                  <OptionSelect
-                    label="Operation"
-                    className="sm:w-24"
-                    value={field.value}
-                    options={CALCULATION_OP_OPTIONS}
-                    onChange={field.onChange}
-                  />
-                )}
-              />
-              <Controller
-                control={control}
-                name="right"
-                render={({ field }) => (
-                  <TextField
-                    fullWidth
-                    value={field.value}
-                    onChange={field.onChange}
-                  >
-                    <Label>Right</Label>
-                    <Input
-                      placeholder="Measure name or number"
-                      autoComplete="off"
-                      className="font-mono text-sm"
-                    />
-                  </TextField>
-                )}
-              />
-            </div>
+            <Controller
+              control={control}
+              name="formula"
+              render={({ field }) => (
+                <FormulaField
+                  value={field.value}
+                  onChange={field.onChange}
+                  measureNames={measureOptions.map((option) => option.value)}
+                />
+              )}
+            />
           )}
         </div>
       </AiMark>
     </section>
+  );
+}
+
+/**
+ * A formula of measure names and numbers, for example
+ * `(auto - teleop) / matches * 100`. Tap a measure name to add it.
+ */
+function FormulaField({
+  value,
+  onChange,
+  measureNames,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  measureNames: string[];
+}) {
+  const parsed = value.trim() === "" ? null : parseFormula(value);
+  const unknown =
+    parsed?.ok === true
+      ? [...new Set(getReferencedMeasures(parsed.expression))].filter((name) => !measureNames.includes(name))
+      : [];
+  const error =
+    parsed !== null && !parsed.ok
+      ? parsed.message
+      : unknown.length > 0
+        ? `No measure is named ${unknown.map((name) => `"${name}"`).join(", ")}.`
+        : null;
+
+  const insert = (name: string) => {
+    const trimmed = value.trimEnd();
+    const needsOperator = trimmed !== "" && /[A-Za-z0-9_)]$/.test(trimmed);
+    onChange(trimmed === "" ? name : `${trimmed}${needsOperator ? " + " : " "}${name}`);
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <TextField fullWidth value={value} onChange={onChange} isInvalid={error !== null}>
+        <Label>Formula</Label>
+        <Input
+          placeholder="(auto - teleop) / matches * 100"
+          autoComplete="off"
+          spellCheck={false}
+          className="font-mono text-sm"
+        />
+        {error ? (
+          <FieldError>{error}</FieldError>
+        ) : (
+          <Description>
+            Use measure names, numbers, + − × ÷ and parentheses. × and ÷ come before + and −.
+          </Description>
+        )}
+      </TextField>
+      {measureNames.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted">Add a measure:</span>
+          {measureNames.map((name) => (
+            <Button
+              key={name}
+              size="sm"
+              variant="tertiary"
+              className="font-mono"
+              onPress={() => insert(name)}
+            >
+              {name}
+            </Button>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }

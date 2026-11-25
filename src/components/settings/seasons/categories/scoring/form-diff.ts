@@ -14,9 +14,7 @@ export type MarkKey =
 const VALUE_FIELDS = new Set([
   "valueMode",
   "valueMeasure",
-  "calculationOp",
-  "left",
-  "right",
+  "formula",
 ]);
 const SELECT_FIELDS = new Set([
   "selectType",
@@ -77,7 +75,7 @@ function measureParts(
 function valueText(values: ScoringFormValues) {
   return values.valueMode === "measure"
     ? `m:${values.valueMeasure}`
-    : `c:${values.left}:${values.calculationOp}:${values.right}`;
+    : `c:${values.formula.replace(/\s+/g, "")}`;
 }
 
 function selectText(values: ScoringFormValues) {

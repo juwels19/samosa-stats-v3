@@ -20,10 +20,13 @@ export default function ScoringCategoryCard({
   category,
   teams,
   eventId,
+  isLocked,
 }: {
   category: EventScoringCategory;
   teams: EventTeam[];
   eventId: Id<"events">;
+  /** True when the results are final, so winners can't change. */
+  isLocked: boolean;
 }) {
   return (
     <li className="flex flex-col gap-3 rounded-2xl bg-surface p-4">
@@ -40,7 +43,12 @@ export default function ScoringCategoryCard({
         </div>
       </div>
 
-      <CategoryWinners category={category} teams={teams} eventId={eventId} />
+      <CategoryWinners
+        category={category}
+        teams={teams}
+        eventId={eventId}
+        isLocked={isLocked}
+      />
     </li>
   );
 }
@@ -71,10 +79,12 @@ function CategoryWinners({
   category,
   teams,
   eventId,
+  isLocked,
 }: {
   category: EventScoringCategory;
   teams: EventTeam[];
   eventId: Id<"events">;
+  isLocked: boolean;
 }) {
   const { winnerSource, result } = category;
 
@@ -95,6 +105,9 @@ function CategoryWinners({
 
   if (winnerSource.type === "manual") {
     const saved = result?.type === "manual" ? result.winners : [];
+    if (isLocked) {
+      return <WinnerTeams winners={saved} teams={teams} />;
+    }
     return (
       <div className="flex flex-col gap-2">
         <ManualWinnersField

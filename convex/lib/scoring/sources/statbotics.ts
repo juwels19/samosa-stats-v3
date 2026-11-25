@@ -21,6 +21,34 @@ export function getStatboticsBaseUrl() {
 // ---------------------------------------------------------------------------
 // Season EPA breakdowns. Add a schema here for each new game.
 
+/** 2025 REEFSCAPE. From real 2025 responses. */
+export const statboticsBreakdown2025Schema = z.looseObject({
+  total_points: z.number(),
+  auto_points: z.number(),
+  teleop_points: z.number(),
+  endgame_points: z.number(),
+  auto_rp: z.number(),
+  coral_rp: z.number(),
+  barge_rp: z.number(),
+  tiebreaker_points: z.number(),
+  auto_coral_points: z.number(),
+  teleop_coral_points: z.number(),
+  coral_l1: z.number(),
+  coral_l2: z.number(),
+  coral_l3: z.number(),
+  coral_l4: z.number(),
+  processor_algae: z.number(),
+  processor_algae_points: z.number(),
+  net_algae_points: z.number(),
+  barge_points: z.number(),
+  rp_1: z.number(),
+  rp_2: z.number(),
+  rp_3: z.number(),
+  total_coral_points: z.number(),
+  total_algae_points: z.number(),
+});
+
+/** 2026 REBUILT. */
 export const statboticsBreakdown2026Schema = z.looseObject({
   total_points: z.number(),
   auto_points: z.number(),
@@ -51,6 +79,7 @@ export const unknownStatboticsBreakdownSchema = z.record(
 );
 
 export const statboticsBreakdownSchemas = {
+  2025: statboticsBreakdown2025Schema,
   2026: statboticsBreakdown2026Schema,
 } as const;
 

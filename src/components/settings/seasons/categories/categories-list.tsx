@@ -11,6 +11,7 @@ import SettingsPageHeader from "@/components/settings/common/settings-page-heade
 import { api } from "../../../../../convex/_generated/api";
 import CategoriesEmptyState from "./categories-empty";
 import CreateCategory from "./create-category";
+import EditCategoryDescription from "./edit-category-description";
 import ImportCategories from "./import-categories";
 import WinnerSourceChip from "./scoring/winner-source-chip";
 
@@ -146,18 +147,29 @@ export default function CategoriesList() {
                   {category.isGlobal ? "Global" : (seasonYear ?? "Season")}
                 </span>
               </div>
-              <p className="text-sm leading-6 whitespace-pre-wrap text-muted">
-                {category.scoringDescription}
-              </p>
+              {category.scoringDescription ? (
+                <p className="text-sm leading-6 whitespace-pre-wrap text-muted">
+                  {category.scoringDescription}
+                </p>
+              ) : (
+                <p className="text-sm text-muted italic">No scoring description</p>
+              )}
               <div className="mt-auto flex items-center justify-between gap-3 pt-1">
                 <WinnerSourceChip winnerSource={category.winnerSource} />
-                <Link
-                  href={`/settings/seasons/categories/${category._id}`}
-                  className={buttonVariants({ size: "sm", variant: "secondary" })}
-                >
-                  <SlidersHorizontalIcon className="size-4" aria-hidden />
-                  Scoring
-                </Link>
+                <div className="flex items-center gap-2">
+                  <EditCategoryDescription
+                    categoryId={category._id}
+                    categoryText={category.text}
+                    scoringDescription={category.scoringDescription}
+                  />
+                  <Link
+                    href={`/settings/seasons/categories/${category._id}`}
+                    className={buttonVariants({ size: "sm", variant: "secondary" })}
+                  >
+                    <SlidersHorizontalIcon className="size-4" aria-hidden />
+                    Scoring
+                  </Link>
+                </div>
               </div>
             </li>
           ))}

@@ -132,13 +132,13 @@ export default function CreateCategory({
                       onBlur={field.onBlur}
                       isInvalid={fieldState.invalid}
                     >
-                      <Label>Scoring description</Label>
+                      <Label>Scoring description (optional)</Label>
                       <TextArea
                         ref={field.ref}
                         placeholder="Explain how to score this category."
                         rows={4}
                       />
-                      <Description>Notes for scoring this category.</Description>
+                      <Description>How the category is won. You can add or change it later.</Description>
                       <FieldError>{fieldState.error?.message}</FieldError>
                     </TextField>
                   )}

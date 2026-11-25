@@ -36,7 +36,7 @@ describe("diffFormValues", () => {
   });
 
   it("ignores fields the active value type does not use", () => {
-    const after = { ...DEFAULT_FORM_VALUES, left: "unused" };
+    const after = { ...DEFAULT_FORM_VALUES, formula: "unused" };
     expect(diffFormValues(DEFAULT_FORM_VALUES, after)).toEqual([]);
   });
 });

@@ -16,7 +16,7 @@ Season: ${year} (${gameName}). Example event to explore and test with: ${eventCo
 - teams: who can win. all, inEliminations (teams on a playoff alliance), notInEliminations, captains.
 - matches: qualification (default), playoffs or all. Applies to the typed sources tba.matches and statbotics.matches only. Practice matches never count.
 - measures: one or more named numbers for each team. Each reads one source, keeps the rows that match its "where" filters, then applies value (first row), sum, avg, max, min or count to a field.
-- value: one measure name, or a calculation (add, subtract, multiply, divide) on 2 measures or numbers.
+- value: one measure name, or a formula of measure names and numbers with + - * / and parentheses, for example (auto - teleop) / matches * 100. * and / come before + and -.
 - select: nth (all teams with the nth distinct value; nth 1 desc is the highest), top (the first n teams; ties at the cutoff also win), threshold (op and value), equals.
 - Field paths use dots and [i], for example breakdown.autoTowerPoints or sort_orders[0]. In tba.matches, {n} is the team's robot position, for example breakdown.endGameRobot{n}.
 - A filter with a source set to another typed source keeps only teams that have a matching row there. All filters on the same other source must match one row of it.

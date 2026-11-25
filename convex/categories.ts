@@ -61,8 +61,8 @@ export const create = mutation({
       throw new Error("Category text is required.");
     }
 
-    if (scoringDescription.length === 0) {
-      throw new Error("Scoring description is required.");
+    if (scoringDescription.length > MAX_SCORING_LENGTH) {
+      throw new Error(`Scoring description must be ${MAX_SCORING_LENGTH} characters or fewer.`);
     }
 
     const activeSeason = await getActiveSeason(ctx);
@@ -189,6 +189,31 @@ const MAX_TEXT_LENGTH = 150;
 const MAX_SCORING_LENGTH = 500;
 const MAX_BULK_CATEGORIES = 200;
 
+/** Changes a category's scoring description. Empty removes it. */
+export const updateDescription = mutation({
+  args: {
+    categoryId: v.id("categories"),
+    scoringDescription: v.string(),
+  },
+  returns: v.null(),
+  async handler(ctx, args) {
+    const currentUser = await getCurrentUser(ctx);
+    if (!currentUser?.isAdmin) {
+      throw new Error("Only admins can change categories.");
+    }
+    const category = await ctx.db.get(args.categoryId);
+    if (category === null) {
+      throw new Error("Category not found.");
+    }
+    const scoringDescription = args.scoringDescription.trim();
+    if (scoringDescription.length > MAX_SCORING_LENGTH) {
+      throw new Error(`Scoring description must be ${MAX_SCORING_LENGTH} characters or fewer.`);
+    }
+    await ctx.db.patch(category._id, { scoringDescription });
+    return null;
+  },
+});
+
 /** Adds many categories to the active season. Saves all of them or none. */
 export const createMany = mutation({
   args: {
@@ -236,9 +261,9 @@ export const createMany = mutation({
       if (text.length === 0 || text.length > MAX_TEXT_LENGTH) {
         throw new Error(`Row ${row}: category text must be 1 to ${MAX_TEXT_LENGTH} characters.`);
       }
-      if (scoringDescription.length === 0 || scoringDescription.length > MAX_SCORING_LENGTH) {
+      if (scoringDescription.length > MAX_SCORING_LENGTH) {
         throw new Error(
-          `Row ${row}: scoring description must be 1 to ${MAX_SCORING_LENGTH} characters.`,
+          `Row ${row}: scoring description must be ${MAX_SCORING_LENGTH} characters or fewer.`,
         );
       }
       const key = normalizeCategoryText(text);

@@ -2,6 +2,7 @@ import { tool } from "ai";
 import * as z from "zod";
 
 import { listFieldPaths } from "../field_paths";
+import { parseFormula } from "../formula";
 import { runConfigOnEvent } from "../run_config";
 import { API_SERVICES, fetchApi, summarizeResponse } from "../sources/api_source";
 import { SCORING_SOURCES, winnerConfigSchema, type WinnerConfig } from "../winner_config";
@@ -17,6 +18,13 @@ export function checkConfigOutput(output: ConfigOutput, year: number): CheckedOu
   const names = output.measures.map((measure) => measure.name);
   const duplicate = names.find((name, index) => names.indexOf(name) !== index);
   if (duplicate) return { ok: false, issues: [`Two measures are named "${duplicate}".`] };
+  if (output.value.measure === null) {
+    const formula = parseFormula(output.value.formula ?? "");
+    if (!formula.ok) return { ok: false, issues: [`value.formula: ${formula.message}`] };
+    if (typeof formula.expression === "number") {
+      return { ok: false, issues: ["value.formula: use at least one measure."] };
+    }
+  }
 
   const parsed = winnerConfigSchema.safeParse(toConfigInput(output));
   if (!parsed.success) {

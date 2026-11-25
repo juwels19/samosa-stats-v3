@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { listFieldPaths } from "../field_paths";
+import matches2025 from "./fixtures/statbotics_matches_2025onosh.json";
 import matches from "./fixtures/statbotics_matches_2026onosh.json";
 import { toStatboticsMatchRows } from "./statbotics_matches";
 
@@ -17,6 +18,16 @@ describe("toStatboticsMatchRows", () => {
     expect(first.opponentResult.score).toBe(matches[0].result.blue_score);
     expect(first.pred?.win_prob).toBe(matches[0].pred.red_win_prob);
     expect(rows[3].pred?.win_prob).toBeCloseTo(1 - matches[0].pred.red_win_prob);
+  });
+
+  it("parses a real 2025 response", () => {
+    const rows = toStatboticsMatchRows(matches2025, 2025);
+
+    expect(rows).toHaveLength(matches2025.length * 6);
+    expect(rows[0].result.coral_l4).toBeTypeOf("number");
+    expect(rows[0].result.barge_rp).toBeTypeOf("boolean");
+    expect(rows[0].pred?.coral_rp).toBeTypeOf("number");
+    expect(rows[0].epa?.comp_9_epa).toBeTypeOf("number");
   });
 
   it("lists typed fields for the field picker", () => {

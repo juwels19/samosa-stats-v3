@@ -95,14 +95,7 @@ export const FILTER_OP_OPTIONS = [
 
 export const VALUE_MODE_OPTIONS = [
   { value: "measure", label: "One measure" },
-  { value: "calculation", label: "Calculation" },
-] as const satisfies Option<string>[];
-
-export const CALCULATION_OP_OPTIONS = [
-  { value: "divide", label: "÷" },
-  { value: "multiply", label: "×" },
-  { value: "add", label: "+" },
-  { value: "subtract", label: "−" },
+  { value: "calculation", label: "Formula" },
 ] as const satisfies Option<string>[];
 
 export const SELECT_TYPE_OPTIONS = [

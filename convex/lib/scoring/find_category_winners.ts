@@ -1,3 +1,4 @@
+import { evaluateExpression } from "./formula";
 import { getApiSourceKey } from "./sources/api_source";
 import { MATCH_SOURCES } from "./winner_config";
 import type {
@@ -212,34 +213,7 @@ function computeValue(
   value: WinnerConfig["value"],
   measures: Record<string, number | null>,
 ): { value: number | null; excludedReason?: "missingData" | "divideByZero" } {
-  if (typeof value === "string") {
-    const measured = measures[value];
-    return measured === null
-      ? { value: null, excludedReason: "missingData" }
-      : { value: measured };
-  }
-
-  const left =
-    typeof value.left === "number" ? value.left : measures[value.left];
-  const right =
-    typeof value.right === "number" ? value.right : measures[value.right];
-
-  if (left === null || right === null) {
-    return { value: null, excludedReason: "missingData" };
-  }
-
-  switch (value.op) {
-    case "add":
-      return { value: left + right };
-    case "subtract":
-      return { value: left - right };
-    case "multiply":
-      return { value: left * right };
-    case "divide":
-      return right === 0
-        ? { value: null, excludedReason: "divideByZero" }
-        : { value: left / right };
-  }
+  return evaluateExpression(value, measures);
 }
 
 function selectWinners(

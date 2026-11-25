@@ -415,7 +415,7 @@ export const pauseMockEvent = mutation({
   },
 });
 
-/** Deletes a mock event with its teams, picks and winners. The Discord log stays. */
+/** Deletes a mock event with its teams, picks, winners and results. The Discord log stays. */
 export const deleteMockEvent = mutation({
   args: { eventId: v.id("events") },
   returns: v.null(),
@@ -424,13 +424,15 @@ export const deleteMockEvent = mutation({
     const event = await getMockEventOrThrow(ctx, args.eventId);
     await cancelPendingJobs(ctx, event.mock.scheduledJobs);
 
-    const [teams, picks, winners] = await Promise.all([
+    const [teams, picks, winners, results, scores] = await Promise.all([
       ctx.db.query("eventTeams").withIndex("byEvent", (q) => q.eq("event", event._id)).collect(),
       ctx.db.query("picks").withIndex("byEvent", (q) => q.eq("event", event._id)).collect(),
       ctx.db.query("categoryWinners").withIndex("byEvent", (q) => q.eq("event", event._id)).collect(),
+      ctx.db.query("eventResults").withIndex("byEvent", (q) => q.eq("event", event._id)).collect(),
+      ctx.db.query("eventScores").withIndex("byEvent", (q) => q.eq("event", event._id)).collect(),
     ]);
     await deletePicks(ctx, picks);
-    for (const row of [...teams, ...winners]) {
+    for (const row of [...teams, ...winners, ...results, ...scores]) {
       await ctx.db.delete(row._id);
     }
     await ctx.db.delete(event._id);
