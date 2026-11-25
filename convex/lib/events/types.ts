@@ -22,6 +22,11 @@ export type EventStatusNotification = {
   startDate: string;
   endDate: string;
   status: EventStatus;
+  /** The official event name, for Discord messages. */
+  name: string;
+  isMock: boolean;
+  /** When submissions close, for the reminder and open messages. */
+  submissionsCloseAt: number;
 };
 
 export type DiscordWebhookPayload = {

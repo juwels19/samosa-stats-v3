@@ -11,6 +11,7 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
+import { getDataEventCode } from "./lib/events/data";
 import { categoryValidator, eventStatusValidator } from "./lib/events/validators";
 import { getCategoryValues } from "./lib/scoring/category_values";
 import {
@@ -219,7 +220,7 @@ export const getCalculationInput = internalQuery({
     return {
       isAdmin: currentUser?.isAdmin ?? false,
       year: season.year,
-      eventCode: event.eventCode,
+      eventCode: getDataEventCode(event),
       teams: teams.map((team) => team.number),
       categories: categories.flatMap((category) =>
         category.winnerSource?.type === "config"

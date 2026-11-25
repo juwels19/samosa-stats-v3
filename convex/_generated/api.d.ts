@@ -8,10 +8,12 @@
  * @module
  */
 
+import type * as aiSettings from "../aiSettings.js";
 import type * as award_audit from "../award_audit.js";
 import type * as categories from "../categories.js";
 import type * as events from "../events.js";
 import type * as http from "../http.js";
+import type * as lib_ai_settings from "../lib/ai_settings.js";
 import type * as lib_events_constants from "../lib/events/constants.js";
 import type * as lib_events_data from "../lib/events/data.js";
 import type * as lib_events_discord from "../lib/events/discord.js";
@@ -21,7 +23,10 @@ import type * as lib_events_sort from "../lib/events/sort.js";
 import type * as lib_events_team_sync from "../lib/events/team_sync.js";
 import type * as lib_events_types from "../lib/events/types.js";
 import type * as lib_events_validators from "../lib/events/validators.js";
+import type * as lib_mocks_mock_events from "../lib/mocks/mock_events.js";
+import type * as lib_mocks_validators from "../lib/mocks/validators.js";
 import type * as lib_picks_constants from "../lib/picks/constants.js";
+import type * as lib_picks_display_name from "../lib/picks/display_name.js";
 import type * as lib_picks_get_event_submission_data from "../lib/picks/get_event_submission_data.js";
 import type * as lib_picks_randomize_pick_selections from "../lib/picks/randomize_pick_selections.js";
 import type * as lib_picks_replace_pick_selections from "../lib/picks/replace_pick_selections.js";
@@ -45,6 +50,7 @@ import type * as lib_scoring_sources_tba from "../lib/scoring/sources/tba.js";
 import type * as lib_scoring_sources_tba_award_types from "../lib/scoring/sources/tba_award_types.js";
 import type * as lib_scoring_validators from "../lib/scoring/validators.js";
 import type * as lib_scoring_winner_config from "../lib/scoring/winner_config.js";
+import type * as mocks from "../mocks.js";
 import type * as picks from "../picks.js";
 import type * as scoring from "../scoring.js";
 import type * as seasons from "../seasons.js";
@@ -57,10 +63,12 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  aiSettings: typeof aiSettings;
   award_audit: typeof award_audit;
   categories: typeof categories;
   events: typeof events;
   http: typeof http;
+  "lib/ai_settings": typeof lib_ai_settings;
   "lib/events/constants": typeof lib_events_constants;
   "lib/events/data": typeof lib_events_data;
   "lib/events/discord": typeof lib_events_discord;
@@ -70,7 +78,10 @@ declare const fullApi: ApiFromModules<{
   "lib/events/team_sync": typeof lib_events_team_sync;
   "lib/events/types": typeof lib_events_types;
   "lib/events/validators": typeof lib_events_validators;
+  "lib/mocks/mock_events": typeof lib_mocks_mock_events;
+  "lib/mocks/validators": typeof lib_mocks_validators;
   "lib/picks/constants": typeof lib_picks_constants;
+  "lib/picks/display_name": typeof lib_picks_display_name;
   "lib/picks/get_event_submission_data": typeof lib_picks_get_event_submission_data;
   "lib/picks/randomize_pick_selections": typeof lib_picks_randomize_pick_selections;
   "lib/picks/replace_pick_selections": typeof lib_picks_replace_pick_selections;
@@ -94,6 +105,7 @@ declare const fullApi: ApiFromModules<{
   "lib/scoring/sources/tba_award_types": typeof lib_scoring_sources_tba_award_types;
   "lib/scoring/validators": typeof lib_scoring_validators;
   "lib/scoring/winner_config": typeof lib_scoring_winner_config;
+  mocks: typeof mocks;
   picks: typeof picks;
   scoring: typeof scoring;
   seasons: typeof seasons;

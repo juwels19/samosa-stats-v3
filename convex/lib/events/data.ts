@@ -1,4 +1,4 @@
-import type { Id } from "../../_generated/dataModel";
+import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
 
 export async function getActiveSeason(ctx: QueryCtx | MutationCtx) {
@@ -62,7 +62,12 @@ export async function getTeamSyncDetailsForEvent(
   }
 
   return {
-    eventCode: event.eventCode,
+    eventCode: getDataEventCode(event),
     seasonYear: season.year,
   };
+}
+
+/** The code to fetch event data with. A mock event reads its source event. */
+export function getDataEventCode(event: Pick<Doc<"events">, "eventCode" | "mock">) {
+  return event.mock?.sourceEventCode ?? event.eventCode;
 }

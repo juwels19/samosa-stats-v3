@@ -1,6 +1,9 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import type { Doc } from "./_generated/dataModel";
 import {
+  type ActionCtx,
+  type QueryCtx,
   internalAction,
   internalMutation,
   internalQuery,
@@ -8,10 +11,13 @@ import {
   query,
 } from "./_generated/server";
 import {
-  getEventStatusDiscordMessage,
-  getPickSubmissionReminderDiscordMessage,
-  sendDiscordMessage,
+  type DiscordMessageKind,
+  getEventDiscordMessage,
+  postDiscordMessage,
 } from "./lib/events/discord";
+import type { EventStatusNotification } from "./lib/events/types";
+import { isStatusAdvance } from "./lib/mocks/mock_events";
+import { discordMessageFields } from "./lib/mocks/validators";
 import {
   assertCategoriesBelongToSeason,
   assertEventDoesNotExistForSeason,
@@ -20,6 +26,7 @@ import {
 } from "./lib/events/data";
 import { normalizeEventCode } from "./lib/events/normalize_event_code";
 import {
+  CLOSE_STEP_INDEX,
   getEventStatusTransitionTimestamps,
   scheduleEventStatusTransitions,
 } from "./lib/events/scheduling";
@@ -110,7 +117,7 @@ export const list = query({
         }),
       ),
       approvedPlayerCount: (await ctx.db.query("users").collect()).filter(
-        (user) => user.isApproved,
+        (user) => user.isApproved && user.isMock !== true,
       ).length,
     };
   },
@@ -327,11 +334,9 @@ export const announceSubmissionsOpen = internalAction({
       eventId: args.eventId,
       status: "SUBMISSIONS_OPEN",
     });
+    if (event === null) return null;
 
-    await sendDiscordMessage({
-      content: getEventStatusDiscordMessage(event),
-    });
-
+    await notifyDiscord(ctx, event, "SUBMISSIONS_OPEN");
     return null;
   },
 });
@@ -346,6 +351,7 @@ export const announceSubmissionsClosed = internalAction({
       eventId: args.eventId,
       status: "SUBMISSIONS_CLOSED",
     });
+    if (event === null) return null;
 
     try {
       const teamSyncDetails = await ctx.runQuery(
@@ -370,10 +376,7 @@ export const announceSubmissionsClosed = internalAction({
       });
     }
 
-    await sendDiscordMessage({
-      content: getEventStatusDiscordMessage(event),
-    });
-
+    await notifyDiscord(ctx, event, "SUBMISSIONS_CLOSED");
     return null;
   },
 });
@@ -388,11 +391,9 @@ export const announceOngoing = internalAction({
       eventId: args.eventId,
       status: "ONGOING",
     });
+    if (event === null) return null;
 
-    await sendDiscordMessage({
-      content: getEventStatusDiscordMessage(event),
-    });
-
+    await notifyDiscord(ctx, event, "ONGOING");
     return null;
   },
 });
@@ -406,40 +407,84 @@ export const sendPickSubmissionReminder = internalAction({
     const event = await ctx.runQuery(internal.events.getForNotification, {
       eventId: args.eventId,
     });
+    if (event === null) return null;
 
-    await sendDiscordMessage({
-      content: getPickSubmissionReminderDiscordMessage(event),
-    });
-
+    await notifyDiscord(ctx, event, "PICK_REMINDER");
     return null;
   },
 });
 
+/**
+ * Sends a message to DISCORD_WEBHOOK_URL and logs it. Mock events use the
+ * same webhook. A failed send still throws, so the scheduler shows it.
+ */
+async function notifyDiscord(
+  ctx: ActionCtx,
+  event: EventStatusNotification,
+  kind: DiscordMessageKind,
+) {
+  const message = getEventDiscordMessage(kind, event);
+  const url = process.env.DISCORD_WEBHOOK_URL;
+  let error: string | undefined;
+
+  if (url === undefined) {
+    error = "DISCORD_WEBHOOK_URL is not configured.";
+  } else {
+    try {
+      await postDiscordMessage(url, message);
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : "The Discord webhook failed.";
+    }
+  }
+
+  await ctx.runMutation(internal.events.logDiscordMessage, {
+    event: event._id,
+    eventName: event.displayName,
+    kind,
+    content: message.content,
+    title: message.embeds[0].title,
+    description: message.embeds[0].description,
+    isMock: event.isMock,
+    status: error === undefined ? "sent" : "failed",
+    ...(error === undefined ? {} : { error }),
+  });
+
+  if (error !== undefined) {
+    throw new Error(error);
+  }
+}
+
+export const logDiscordMessage = internalMutation({
+  args: discordMessageFields,
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.insert("discordMessages", args);
+    return null;
+  },
+});
+
+/**
+ * Moves an event forward to a status. Returns null, and changes nothing, when
+ * the event was deleted or is already at or after that status.
+ */
 export const setStatus = internalMutation({
   args: {
     eventId: v.id("events"),
     status: eventStatusValidator,
   },
-  returns: eventStatusNotificationValidator,
+  returns: v.union(eventStatusNotificationValidator, v.null()),
   handler: async (ctx, args) => {
     const event = await ctx.db.get(args.eventId);
 
-    if (event === null) {
-      throw new Error("Event not found.");
+    if (event === null || !isStatusAdvance(event.status, args.status)) {
+      return null;
     }
 
     await ctx.db.patch(args.eventId, {
       status: args.status,
     });
 
-    return {
-      _id: event._id,
-      displayName: event.displayName,
-      eventCode: event.eventCode,
-      startDate: event.startDate,
-      endDate: event.endDate,
-      status: args.status,
-    };
+    return await toNotification(ctx, { ...event, status: args.status });
   },
 });
 
@@ -447,24 +492,45 @@ export const getForNotification = internalQuery({
   args: {
     eventId: v.id("events"),
   },
-  returns: eventStatusNotificationValidator,
+  returns: v.union(eventStatusNotificationValidator, v.null()),
   handler: async (ctx, args) => {
     const event = await ctx.db.get(args.eventId);
-
-    if (event === null) {
-      throw new Error("Event not found.");
-    }
-
-    return {
-      _id: event._id,
-      displayName: event.displayName,
-      eventCode: event.eventCode,
-      startDate: event.startDate,
-      endDate: event.endDate,
-      status: event.status,
-    };
+    return event === null ? null : await toNotification(ctx, event);
   },
 });
+
+async function toNotification(
+  ctx: QueryCtx,
+  event: Doc<"events">,
+): Promise<EventStatusNotification> {
+  return {
+    name: event.name,
+    submissionsCloseAt: await getSubmissionsCloseAt(ctx, event),
+    _id: event._id,
+    displayName: event.displayName,
+    eventCode: event.eventCode,
+    startDate: event.startDate,
+    endDate: event.endDate,
+    status: event.status,
+    isMock: event.mock !== undefined,
+  };
+}
+
+/**
+ * When submissions close. A mock event closes at its scheduled close step.
+ * A real event closes at its normal time.
+ */
+async function getSubmissionsCloseAt(ctx: QueryCtx, event: Doc<"events">) {
+  const closeJobId = event.mock?.scheduledJobs[CLOSE_STEP_INDEX];
+  const closeJob = closeJobId === undefined ? null : await ctx.db.system.get(closeJobId);
+  return (
+    closeJob?.scheduledTime ??
+    getEventStatusTransitionTimestamps({
+      startDate: event.startDate,
+      endDate: event.endDate,
+    }).submissionsClosed
+  );
+}
 
 export const getTeamSyncDetails = internalQuery({
   args: {

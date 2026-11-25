@@ -141,6 +141,9 @@ export default function PicksSubmissionForm({
           displayName={picksSelection.displayName}
           disabled={fieldsDisabled}
           onDisplayNameChange={picksSelection.setDisplayName}
+          eventCode={eventCode}
+          teamIds={picksSelection.selectedTeamIds}
+          categoryIds={picksSelection.selectedCategoryIds}
         />
       </div>
 

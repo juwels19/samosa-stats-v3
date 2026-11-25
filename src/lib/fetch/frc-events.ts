@@ -13,22 +13,6 @@ export type FrcEvents_Season = {
   }[];
 };
 
-export type FrcEvents_Alliance = {
-  number: number;
-  captain: number;
-  round1: number;
-  round2: number;
-  round3: number | null;
-  backup: number | null;
-  backupReplaced: number | null;
-  name: string
-}
-
-export type FrcEvents_AllianceSelection = {
-  "Alliances": FrcEvents_Alliance[];
-  count: number;
-}
-
 type FrcEventsEventResponse = {
   code: string;
   name: string;
@@ -243,50 +227,6 @@ export async function getTeamsForYearAndCode({
   }
 
   return getTeamsFromResponse(data);
-}
-
-export async function getEventAllianceSelectionForYearAndCode({
-  year,
-  eventCode,
-}: {
-  year: number | string;
-  eventCode: string;
-}): Promise<FrcEvents_AllianceSelection> {
-  const normalizedYear = String(year).trim();
-  const normalizedEventCode = eventCode.trim().toUpperCase();
-
-  if (!/^\d{4}$/.test(normalizedYear)) {
-    throw new Error("Select an active season before loading alliance selection.");
-  }
-
-  if (!/^[A-Z0-9]+$/.test(normalizedEventCode)) {
-    throw new Error("Enter a valid event code.");
-  }
-
-  const result = await fetchFrcEvents(
-    `/${normalizedYear}/alliances/${encodeURIComponent(normalizedEventCode)}`,
-    "GET",
-    "no-store",
-  );
-  const responseBody = await result.text();
-
-  if (result.status === 404) {
-    throw new Error(
-      `No FRC alliance selection found for code ${normalizedEventCode} in ${normalizedYear}.`,
-    );
-  }
-
-  if (!result.ok) {
-    throw new Error(`Unable to fetch FRC alliance selection for ${normalizedEventCode}.`);
-  }
-
-  if (responseBody.length === 0) {
-    throw new Error(`No FRC alliance selection data found for ${normalizedEventCode}.`);
-  }
-
-  const data = JSON.parse(responseBody) as FrcEvents_AllianceSelection;
-
-  return data;
 }
 
 function getFirstEventFromResponse(data: unknown): FrcEventsEventResponse | null {

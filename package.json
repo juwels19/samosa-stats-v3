@@ -15,8 +15,6 @@
     "node": ">=24.0.0"
   },
   "dependencies": {
-    "@ai-sdk/devtools": "^1.0.84",
-    "@ai-sdk/react": "^4.0.186",
     "@clerk/nextjs": "^7.10.8",
     "@heroui/react": "^3.2.8",
     "@heroui/styles": "^3.2.8",

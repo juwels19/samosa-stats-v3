@@ -1,6 +1,21 @@
 import { v } from "convex/values";
 
-import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+import type { Doc, Id } from "./_generated/dataModel";
+import {
+  action,
+  internalAction,
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+  type QueryCtx,
+} from "./_generated/server";
+import {
+  SUGGESTIONS_PER_SUBMISSION,
+  generateDisplayName,
+  type DisplayNameContext,
+} from "./lib/picks/display_name";
 import {
   getEventSubmissionData,
   getGlobalCategoryIdsForEvent,
@@ -17,6 +32,7 @@ import {
   eventPickValidator,
   pickSubmissionDataValidator,
 } from "./lib/picks/validators";
+import { getDisplayNameSuggestionSettings } from "./lib/ai_settings";
 import { getCurrentUser } from "./users";
 
 
@@ -315,3 +331,176 @@ function normalizeDisplayName(displayName: string | undefined) {
 
   return trimmedDisplayName === "" ? undefined : trimmedDisplayName;
 }
+
+const displayNameContextValidator = v.object({
+  eventName: v.string(),
+  teams: v.array(v.object({ number: v.number(), name: v.string() })),
+  categories: v.array(v.string()),
+});
+
+async function getDisplayNameContext(
+  ctx: QueryCtx,
+  {
+    event,
+    teamIds,
+    categoryIds,
+  }: {
+    event: Doc<"events">;
+    teamIds: Id<"teams">[];
+    categoryIds: Id<"categories">[];
+  },
+): Promise<DisplayNameContext> {
+  const [teams, categories] = await Promise.all([
+    Promise.all(teamIds.map(async (id) => await ctx.db.get(id))),
+    Promise.all(categoryIds.map(async (id) => await ctx.db.get(id))),
+  ]);
+  return {
+    eventName: event.name,
+    teams: teams
+      .filter((team) => team !== null)
+      .map((team) => ({ number: Number(team.number), name: team.name })),
+    categories: categories
+      .filter((category) => category !== null)
+      .map((category) => category.text),
+  };
+}
+
+/**
+ * Counts one suggestion for the player's submission and gets what the model
+ * needs. Throws when the player can't submit picks or used all suggestions
+ * for this event.
+ */
+export const startDisplayNameSuggestion = internalMutation({
+  args: {
+    eventCode: v.string(),
+    teamIds: v.array(v.id("teams")),
+    categoryIds: v.array(v.id("categories")),
+  },
+  returns: displayNameContextValidator,
+  handler: async (ctx, args) => {
+    const settings = await getDisplayNameSuggestionSettings(ctx);
+    if (!settings.enabled) {
+      throw new Error("Name suggestions are turned off.");
+    }
+    const currentUser = await getCurrentUser(ctx);
+    if (!currentUser) {
+      throw new Error("Sign in to get a name suggestion.");
+    }
+    if (!currentUser.isApproved && !currentUser.isAdmin) {
+      throw new Error("Approved access is required to get a name suggestion.");
+    }
+
+    const submissionData = await getEventSubmissionData(ctx, {
+      eventCode: args.eventCode,
+      userId: currentUser._id,
+    });
+    const event =
+      submissionData === null ? null : await ctx.db.get(submissionData.event._id);
+    if (event === null) {
+      throw new Error("Event not found.");
+    }
+
+    const usage = await ctx.db
+      .query("displayNameSuggestionCounts")
+      .withIndex("byUserAndEvent", (q) => q.eq("user", currentUser._id).eq("event", event._id))
+      .unique();
+    if ((usage?.count ?? 0) >= SUGGESTIONS_PER_SUBMISSION) {
+      throw new Error(
+        `You used all ${SUGGESTIONS_PER_SUBMISSION} name suggestions for this event. Type a name instead.`,
+      );
+    }
+    if (usage === null) {
+      await ctx.db.insert("displayNameSuggestionCounts", {
+        user: currentUser._id,
+        event: event._id,
+        count: 1,
+      });
+    } else {
+      await ctx.db.patch(usage._id, { count: usage.count + 1 });
+    }
+
+    const context = await getDisplayNameContext(ctx, {
+      event,
+      teamIds: args.teamIds,
+      categoryIds: args.categoryIds,
+    });
+    return context;
+  },
+});
+
+/** An AI display name for the picks the player has selected so far. */
+export const suggestDisplayName = action({
+  args: {
+    eventCode: v.string(),
+    teamIds: v.array(v.id("teams")),
+    categoryIds: v.array(v.id("categories")),
+  },
+  returns: v.string(),
+  handler: async (ctx, args): Promise<string> => {
+    const context = await ctx.runMutation(internal.picks.startDisplayNameSuggestion, args);
+    return await generateDisplayName(context);
+  },
+});
+
+export const getDisplayNameSettings = internalQuery({
+  args: {},
+  returns: v.object({ enabled: v.boolean() }),
+  handler: async (ctx) => await getDisplayNameSuggestionSettings(ctx),
+});
+
+export const getPickNameContext = internalQuery({
+  args: { pickId: v.id("picks") },
+  returns: v.union(displayNameContextValidator, v.null()),
+  handler: async (ctx, args) => {
+    const pick = await ctx.db.get(args.pickId);
+    const event = pick === null ? null : await ctx.db.get(pick.event);
+    if (pick === null || event === null) return null;
+    const pickTeams = await ctx.db
+      .query("pickTeams")
+      .withIndex("byPick", (q) => q.eq("pick", pick._id))
+      .collect();
+    return await getDisplayNameContext(ctx, {
+      event,
+      teamIds: pickTeams.map((row) => row.team),
+      categoryIds: pick.categories,
+    });
+  },
+});
+
+export const setPickDisplayName = internalMutation({
+  args: { pickId: v.id("picks"), displayName: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    if ((await ctx.db.get(args.pickId)) !== null) {
+      await ctx.db.patch(args.pickId, { displayName: args.displayName });
+    }
+    return null;
+  },
+});
+
+/**
+ * Gives AI names to picks, for example new mock picks. A pick keeps its old
+ * name when the model fails or suggestions are off.
+ */
+export const nameGeneratedPicks = internalAction({
+  args: { pickIds: v.array(v.id("picks")) },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const settings = await ctx.runQuery(internal.picks.getDisplayNameSettings, {});
+    if (!settings.enabled) return null;
+    const results = await Promise.allSettled(
+      args.pickIds.map(async (pickId) => {
+        const context = await ctx.runQuery(internal.picks.getPickNameContext, { pickId });
+        if (context === null) return;
+        const displayName = await generateDisplayName(context);
+        await ctx.runMutation(internal.picks.setPickDisplayName, { pickId, displayName });
+      }),
+    );
+    for (const result of results) {
+      if (result.status === "rejected") {
+        console.warn("A pick did not get an AI name.", result.reason);
+      }
+    }
+    return null;
+  },
+});

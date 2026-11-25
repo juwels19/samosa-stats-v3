@@ -29,6 +29,12 @@ export async function requireApprovedUser() {
   return currentUser;
 }
 
+/** True when the Convex deployment has the test tools (not production). */
+export async function areMocksEnabled() {
+  const convex = new ConvexHttpClient(clientEnv.NEXT_PUBLIC_CONVEX_URL);
+  return await convex.query(api.mocks.isEnabled, {});
+}
+
 export async function getCurrentUserFromSession() {
   const { getToken, userId } = await auth();
 

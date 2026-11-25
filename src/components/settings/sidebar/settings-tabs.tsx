@@ -3,11 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { settingsTabs } from "./constants";
+import { aiTab, settingsTabs, testingTab } from "./constants";
 
 /** Underline tabs that stick under the top bar at every width. */
-export default function SettingsTabs() {
+export default function SettingsTabs({
+  isAdmin,
+  showTesting,
+}: {
+  isAdmin: boolean;
+  showTesting: boolean;
+}) {
   const pathname = usePathname();
+  const tabs = [
+    ...settingsTabs,
+    ...(isAdmin ? [aiTab] : []),
+    ...(showTesting ? [testingTab] : []),
+  ];
 
   return (
     <div className="sticky top-(--nav-height) z-20 border-b border-separator bg-background/90 backdrop-blur-lg">
@@ -15,7 +26,7 @@ export default function SettingsTabs() {
         aria-label="Settings"
         className="mx-auto -mb-px flex max-w-5xl gap-6 overflow-x-auto px-4 [scrollbar-width:none] sm:px-6"
       >
-        {settingsTabs.map((tab) => {
+        {tabs.map((tab) => {
           const active = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
           return (
             <Link

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { Doc, Id } from "../../_generated/dataModel";
+import { mockEventValidator } from "../mocks/validators";
 import { winnerSourceValidator } from "../scoring/validators";
 
 export const seasonValidator = v.object({
@@ -42,6 +43,7 @@ export const eventValidator = v.object({
   numberOfCategoryPicks: v.int64(),
   categories: v.array(v.id("categories")),
   status: eventStatusValidator,
+  mock: v.optional(mockEventValidator),
 });
 
 /** Event plus the counts the admin events table shows. */
@@ -58,6 +60,9 @@ export const eventStatusNotificationValidator = v.object({
   startDate: v.string(),
   endDate: v.string(),
   status: eventStatusValidator,
+  name: v.string(),
+  isMock: v.boolean(),
+  submissionsCloseAt: v.number(),
 });
 
 export const frcEventTeamValidator = v.object({
@@ -163,5 +168,6 @@ export const dashboardEventValidator = v.object({
   numberOfCategoryPicks: v.int64(),
   categories: v.array(v.id("categories")),
   status: eventStatusValidator,
+  mock: v.optional(mockEventValidator),
   hasSubmittedPicks: v.boolean(),
 });

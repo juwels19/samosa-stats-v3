@@ -2,6 +2,10 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 import {
+  discordMessageFields,
+  mockEventValidator,
+} from "./lib/mocks/validators";
+import {
   categoryWinnerResultValidator,
   winnerSourceValidator,
 } from "./lib/scoring/validators";
@@ -28,10 +32,13 @@ export default defineSchema({
     invitedAt: v.optional(v.number()),
     approvedAt: v.optional(v.number()),
     rejectedAt: v.optional(v.number()),
+    /** A fake player that holds mock picks. Can't sign in. */
+    isMock: v.optional(v.boolean()),
   })
     .index("byExternalId", ["externalId"])
     .index("byNormalizedEmail", ["normalizedEmail"])
-    .index("byWaitlistEntryId", ["waitlistEntryId"]),
+    .index("byWaitlistEntryId", ["waitlistEntryId"])
+    .index("byIsMock", ["isMock"]),
   seasons: defineTable({
     year: v.number(),
     gameName: v.string(),
@@ -58,6 +65,8 @@ export default defineSchema({
       v.literal("ONGOING"),
       v.literal("COMPLETE"),
     ),
+    /** Set on a test copy of an event. See docs/testing.md. */
+    mock: v.optional(mockEventValidator),
   })
     .index("bySeason", ["season"])
     .index("bySeasonAndEventCode", ["season", "eventCode"]),
@@ -113,4 +122,16 @@ export default defineSchema({
   })
     .index("byEvent", ["event"])
     .index("byEventAndCategory", ["event", "category"]),
+  /** App-wide AI settings that admins change. One row; defaults when empty. */
+  aiSettings: defineTable({
+    displayNameSuggestions: v.object({ enabled: v.boolean() }),
+  }),
+  /** AI display name suggestions each player asked for, by event. */
+  displayNameSuggestionCounts: defineTable({
+    user: v.id("users"),
+    event: v.id("events"),
+    count: v.number(),
+  }).index("byUserAndEvent", ["user", "event"]),
+  /** Each Discord message an event sent, or would have sent. */
+  discordMessages: defineTable(discordMessageFields).index("byEvent", ["event"]),
 })

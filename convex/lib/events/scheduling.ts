@@ -16,6 +16,10 @@ import {
 } from "./constants";
 import type { EventStatusTransitionTimestamps } from "./types";
 
+/** The position of the close step in the ids that the scheduler returns. */
+export const CLOSE_STEP_INDEX = 2;
+
+/** Schedules each status change. Returns the scheduled function ids, in step order. */
 export async function scheduleEventStatusTransitions(
   ctx: MutationCtx,
   {
@@ -25,35 +29,37 @@ export async function scheduleEventStatusTransitions(
     eventId: Id<"events">;
     transitionTimestamps: EventStatusTransitionTimestamps;
   },
-) {
-  await ctx.scheduler.runAt(
-    transitionTimestamps.submissionsOpen,
-    internal.events.announceSubmissionsOpen,
-    { eventId },
-  );
-  await ctx.scheduler.runAt(
-    transitionTimestamps.pickSubmissionReminder,
-    internal.events.sendPickSubmissionReminder,
-    { eventId },
-  );
-  await ctx.scheduler.runAt(
-    transitionTimestamps.submissionsClosed,
-    internal.events.announceSubmissionsClosed,
-    { eventId },
-  );
-  await ctx.scheduler.runAt(
-    transitionTimestamps.ongoing,
-    internal.events.announceOngoing,
-    { eventId },
-  );
-  await ctx.scheduler.runAt(
-    transitionTimestamps.complete,
-    internal.events.setStatus,
-    {
-      eventId,
-      status: "COMPLETE",
-    },
-  );
+): Promise<Id<"_scheduled_functions">[]> {
+  return [
+    await ctx.scheduler.runAt(
+      transitionTimestamps.submissionsOpen,
+      internal.events.announceSubmissionsOpen,
+      { eventId },
+    ),
+    await ctx.scheduler.runAt(
+      transitionTimestamps.pickSubmissionReminder,
+      internal.events.sendPickSubmissionReminder,
+      { eventId },
+    ),
+    await ctx.scheduler.runAt(
+      transitionTimestamps.submissionsClosed,
+      internal.events.announceSubmissionsClosed,
+      { eventId },
+    ),
+    await ctx.scheduler.runAt(
+      transitionTimestamps.ongoing,
+      internal.events.announceOngoing,
+      { eventId },
+    ),
+    await ctx.scheduler.runAt(
+      transitionTimestamps.complete,
+      internal.events.setStatus,
+      {
+        eventId,
+        status: "COMPLETE",
+      },
+    ),
+  ];
 }
 
 export function getEventStatusTransitionTimestamps({

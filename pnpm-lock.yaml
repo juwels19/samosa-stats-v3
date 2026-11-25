@@ -8,12 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@ai-sdk/devtools':
-        specifier: ^1.0.84
-        version: 1.0.84(zod@4.6.7)
-      '@ai-sdk/react':
-        specifier: ^4.0.186
-        version: 4.0.186(react@19.3.1)(zod@4.6.7)
       '@clerk/nextjs':
         specifier: ^7.10.8
         version: 7.10.8(next@16.4.6(@babel/core@7.29.13)(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -132,19 +126,8 @@ packages:
       react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
       react-dom: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
 
-  '@ai-sdk/devtools@1.0.84':
-    resolution: {integrity: sha512-X2fkkklg9roWkHQ9pDXR2T5jYv5kFcIF4r1FQzsftom8fwkph+t+wo11m1NyoKQ0UIzKMZNbgoon1KAw0rY/aQ==}
-    engines: {node: '>=22'}
-    hasBin: true
-
   '@ai-sdk/gateway@4.0.154':
     resolution: {integrity: sha512-7noB6L/iZ55MRey35rrcbB/J+rAeyRafhJP6G/+/CkOSHxrcdFeMEbtvdIuXTr5S+AAMMQpka+xnD4zVwn04Sw==}
-    engines: {node: '>=22'}
-    peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
-
-  '@ai-sdk/mcp@2.0.104':
-    resolution: {integrity: sha512-reus9flS8Te+ttV5aCx2k54jAm+CfBrJfB+hxLKvGCw2Xiv9Y47iE9E7yFGtN5OB0XL1eOPgRY0upMusjxUPKg==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -158,12 +141,6 @@ packages:
   '@ai-sdk/provider@4.0.39':
     resolution: {integrity: sha512-jRvAhvW23+TeMGVCME2WGejP/TjzyDg7TplUep3t8HcEYnC2/8zqhCy9RRrjjVs1ljcygABZ8pQ21MbCRdF01w==}
     engines: {node: '>=22'}
-
-  '@ai-sdk/react@4.0.186':
-    resolution: {integrity: sha512-AACbn8gCiB3WMJXWV245+W/3dRDwUptnQHmYfEroy+TqaSI5MFAn1lw7tOfCeF2UlHUgKsbGvsYkPBI7tz8gGg==}
-    engines: {node: '>=22'}
-    peerDependencies:
-      react: ^18 || ~19.0.1 || ~19.1.2 || ^19.2.1
 
   '@alloc/quick-lru@5.3.0':
     resolution: {integrity: sha512-U4+70Pc5ZS9osnCBCE5Jha/ciHM+Yp+CNMNC/7HvYbNRk1Ldd+f7qO65W5qfhu/TCv+/ozljlXXe9Nj8419DMA==}
@@ -513,12 +490,6 @@ packages:
     resolution: {integrity: sha512-66+qgy4Hj1llJHYQw4d7wM5+/lkZrAl0LFUcQZTo68VYOy2eVXzHc0IYKLDMz6sSlDfQfI/uDnuEFbcA0BAwCQ==}
     peerDependencies:
       tailwindcss: '>=4.0.0'
-
-  '@hono/node-server@1.19.19':
-    resolution: {integrity: sha512-Fy9R7PACOzHU9LDpfnuzVyuVYevKQRcEG2mZhmfc+DRdmayEd3RVfa2XOt2IgGcPNgA77Yk63KBszepcMFK5Ng==}
-    engines: {node: '>=18.14.1'}
-    peerDependencies:
-      hono: ^4
 
   '@hookform/resolvers@7.0.8':
     resolution: {integrity: sha512-44+R4PUy3MWIBJR4sOjW0bZaz+H81k26urkTYeXAvEa8h45ueHrvQpZR/96iyLOobL6/yO0BJTaRPwwyDlL1/A==}
@@ -2228,10 +2199,6 @@ packages:
   hermes-parser@0.25.1:
     resolution: {integrity: sha512-6pEjquH3rqaI6cYAXYPcz9MS4rY6R4ngRgrgfDshRptUZIc3lw0MCIJIGDj9++mfySOuPTHB4nrSW99BCvOPIA==}
 
-  hono@4.13.21:
-    resolution: {integrity: sha512-h9UsguqfVk4kjUwLvQpHOmOaJpW10jz9lp8bvKUUa04wJG/fabKFBqXZ06D6LFaeKQZtUZRVeg0gfkTTEsX7Mw==}
-    engines: {node: '>=16.9.0'}
-
   ignore@5.3.2:
     resolution: {integrity: sha512-hsBTNUqQTDwkWtcdYI2i06Y/nUBEsNEDJKjWdigLvegy8kDuJAS8uRlpkkcQpyEXL0Z/pjDy5HBmMjRCJ2gq+g==}
     engines: {node: '>= 4'}
@@ -2683,10 +2650,6 @@ packages:
     resolution: {integrity: sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA==}
     engines: {node: '>=12'}
 
-  pkce-challenge@5.0.2:
-    resolution: {integrity: sha512-vCc54+qyIfKC5e2UN28AZKElwqjLINgiIV3RKI8pDu93TjaAJoB3QrgMzEBouy8yOKsXVXdAinO1QArJf9x5WA==}
-    engines: {node: '>=16.20.0'}
-
   possible-typed-array-names@1.1.0:
     resolution: {integrity: sha512-/+5VFTchJDoVj3bhoqi6UeymcD00DAwb1nJwamzPvHEszJ4FpF6SNNbUbOS8yI56qHzdV8eK0qEfOSiodkTdxg==}
     engines: {node: '>= 0.4'}
@@ -2980,11 +2943,6 @@ packages:
     resolution: {integrity: sha512-Zm8jaHK51pM9X/SN7CQ9aNc/0Egg+37wrbbhC1fpcn4EjADLZL5vkTniAAqjQIdXov3YciZSTKsa0K5ouNtnDw==}
     engines: {node: '>=22'}
 
-  swr@2.5.1:
-    resolution: {integrity: sha512-BRw55e8r0B7SpDN20CAzoQAHl7y1yP7/Zt7oqUjMv0vSt2u2Xnkm88Ws+VypbV9BXHQVuSuyVq7zMjO16wSExw==}
-    peerDependencies:
-      react: ^16.11.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-
   tailwind-merge@3.7.1:
     resolution: {integrity: sha512-v7y4BV4FUlO8exj/4M5UXKeoowDiuugVUg3tkMNIyOUCOHy5xp8+5aWQeXCtZ2491sUV1YPsVeM9EveZ6/xuZQ==}
 
@@ -2998,10 +2956,6 @@ packages:
   tapable@2.3.4:
     resolution: {integrity: sha512-NHFiWnAbMJxNNpBwiO7jJVGDuqMxT9/oV8v57RR+fgBQShkJil5inGD8/xWy0hjLyHQyX1tu27QANhlz3KBqCg==}
     engines: {node: '>=6'}
-
-  throttleit@2.1.0:
-    resolution: {integrity: sha512-nt6AMGKW1p/70DF/hGBdJB57B8Tspmbp5gfJ8ilhLnt7kkr2ye7hzD6NVG8GGErk2HWF34igrL2CXmNIkzKqKw==}
-    engines: {node: '>=18'}
 
   tinybench@6.2.5:
     resolution: {integrity: sha512-b/8GRMdnY4cqkfCLyaFpTGIv1qwfi3oT0mWaepwT++6Z/ZrYehNfZZ2JDKVLKGhNoEkS3IIB1ELtCT0XS5DtOA==}
@@ -3261,28 +3215,11 @@ snapshots:
       react-transition-group: 4.4.5(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       use-sync-external-store: 1.7.0(react@19.3.1)
 
-  '@ai-sdk/devtools@1.0.84(zod@4.6.7)':
-    dependencies:
-      '@ai-sdk/provider': 4.0.39
-      '@hono/node-server': 1.19.19(hono@4.13.21)
-      ai: 7.0.181(zod@4.6.7)
-      hono: 4.13.21
-    transitivePeerDependencies:
-      - zod
-
   '@ai-sdk/gateway@4.0.154(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 4.0.39
       '@ai-sdk/provider-utils': 5.0.83(zod@4.6.7)
       '@vercel/oidc': 3.2.0
-      zod: 4.6.7
-
-  '@ai-sdk/mcp@2.0.104(zod@4.6.7)':
-    dependencies:
-      '@ai-sdk/provider': 4.0.39
-      '@ai-sdk/provider-utils': 5.0.83(zod@4.6.7)
-      cross-spawn: 7.0.6
-      pkce-challenge: 5.0.2
       zod: 4.6.7
 
   '@ai-sdk/provider-utils@5.0.83(zod@4.6.7)':
@@ -3296,18 +3233,6 @@ snapshots:
   '@ai-sdk/provider@4.0.39':
     dependencies:
       json-schema: 0.4.0
-
-  '@ai-sdk/react@4.0.186(react@19.3.1)(zod@4.6.7)':
-    dependencies:
-      '@ai-sdk/mcp': 2.0.104(zod@4.6.7)
-      '@ai-sdk/provider': 4.0.39
-      '@ai-sdk/provider-utils': 5.0.83(zod@4.6.7)
-      ai: 7.0.181(zod@4.6.7)
-      react: 19.3.1
-      swr: 2.5.1(react@19.3.1)
-      throttleit: 2.1.0
-    transitivePeerDependencies:
-      - zod
 
   '@alloc/quick-lru@5.3.0': {}
 
@@ -3640,10 +3565,6 @@ snapshots:
       tailwind-variants: 4.0.2
       tailwindcss: 4.3.5
       tw-animate-css: 1.4.0
-
-  '@hono/node-server@1.19.19(hono@4.13.21)':
-    dependencies:
-      hono: 4.13.21
 
   '@hookform/resolvers@7.0.8(@standard-schema/spec@1.1.0)(ajv-formats@3.0.1(ajv@8.20.0))(ajv@8.20.0)(react-hook-form@7.92.0(@types/react@19.3.0)(react@19.3.1))(zod@4.6.7)':
     dependencies:
@@ -5317,8 +5238,6 @@ snapshots:
     dependencies:
       hermes-estree: 0.25.1
 
-  hono@4.13.21: {}
-
   ignore@5.3.2: {}
 
   ignore@7.0.16: {}
@@ -5747,8 +5666,6 @@ snapshots:
 
   picomatch@4.0.7: {}
 
-  pkce-challenge@5.0.2: {}
-
   possible-typed-array-names@1.1.0: {}
 
   postcss@8.5.23:
@@ -6141,12 +6058,6 @@ snapshots:
     dependencies:
       standardwebhooks: 1.3.0
 
-  swr@2.5.1(react@19.3.1):
-    dependencies:
-      dequal: 2.0.3
-      react: 19.3.1
-      use-sync-external-store: 1.7.0(react@19.3.1)
-
   tailwind-merge@3.7.1: {}
 
   tailwind-variants@4.0.2: {}
@@ -6154,8 +6065,6 @@ snapshots:
   tailwindcss@4.3.5: {}
 
   tapable@2.3.4: {}
-
-  throttleit@2.1.0: {}
 
   tinybench@6.2.5: {}
 
