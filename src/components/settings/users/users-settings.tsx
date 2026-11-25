@@ -2,6 +2,7 @@
 
 import {
   AlertDialog,
+  Avatar,
   Button,
   Chip,
   SearchField,
@@ -28,6 +29,7 @@ type UserRow = {
   firstName: string;
   lastName: string;
   email: string;
+  imageUrl?: string;
   role: UserRole;
   isApproved: boolean;
   isCurrentUser: boolean;
@@ -239,12 +241,10 @@ function UserCell({ user }: { user: UserRow }) {
   const name = fullName(user);
   return (
     <div className="flex min-w-0 items-center gap-3">
-      <span
-        aria-hidden
-        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-default text-xs font-semibold"
-      >
-        {initials(user)}
-      </span>
+      <Avatar aria-hidden className="size-9 shrink-0">
+        {user.imageUrl ? <Avatar.Image src={user.imageUrl} alt="" /> : null}
+        <Avatar.Fallback className="text-xs font-semibold">{initials(user)}</Avatar.Fallback>
+      </Avatar>
       <div className="flex min-w-0 flex-col">
         <span className="flex items-center gap-2 font-medium">
           <span className="truncate">{name || user.email}</span>

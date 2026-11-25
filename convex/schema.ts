@@ -19,6 +19,8 @@ export default defineSchema({
     lastName: v.string(),
     email: v.string(),
     normalizedEmail: v.optional(v.string()),
+    /** The Clerk profile image. Not set when the user has no uploaded image. */
+    imageUrl: v.optional(v.string()),
     isAdmin: v.boolean(),
     isApprover: v.boolean(),
     isApproved: v.boolean(),

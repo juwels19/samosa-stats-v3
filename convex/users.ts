@@ -26,6 +26,7 @@ const userValidator = v.object({
   lastName: v.string(),
   email: v.string(),
   normalizedEmail: v.optional(v.string()),
+  imageUrl: v.optional(v.string()),
   isAdmin: v.boolean(),
   isApprover: v.boolean(),
   isApproved: v.boolean(),
@@ -134,6 +135,8 @@ export const upsertFromClerk = internalMutation({
       email,
       normalizedEmail,
       externalId: data.id,
+      // Clerk's default image is a placeholder. Leave it out so the UI shows initials.
+      imageUrl: data.has_image ? data.image_url : undefined,
     };
 
     const user =
@@ -201,6 +204,7 @@ export const listWithRoles = query({
       firstName: v.string(),
       lastName: v.string(),
       email: v.string(),
+      imageUrl: v.optional(v.string()),
       role: userRoleValidator,
       isApproved: v.boolean(),
       isCurrentUser: v.boolean(),
@@ -221,6 +225,7 @@ export const listWithRoles = query({
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
+        imageUrl: user.imageUrl,
         role: getUserRole(user),
         isApproved: user.isApproved,
         isCurrentUser: user._id === currentUser._id,
@@ -388,6 +393,8 @@ async function userByNormalizedEmail(
   ctx: QueryCtx | MutationCtx,
   normalizedEmail: string,
 ) {
+  // Users with no email (for example Discord sign-ins without one) must never match each other.
+  if (normalizedEmail === "") return null;
   return await ctx.db
     .query("users")
     .withIndex("byNormalizedEmail", (q) =>
